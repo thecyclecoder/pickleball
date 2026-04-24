@@ -11,15 +11,29 @@ function resend(): Resend {
 }
 
 /** Generate a passwordless "magic link" for this email that, when clicked,
- *  signs the user in and redirects to `redirectPath`. Creates the auth user
- *  on first click if they don't exist.
+ *  signs the user in and redirects to `redirectPath`.
  *
- *  The raw Supabase verify URL is wrapped in our own /auth/confirm page
- *  because single-use tokens get consumed by email link scanners (Gmail,
- *  Outlook, Proofpoint, etc.) before the human ever clicks. The wrapper
- *  requires an explicit button click, which scanners don't do. */
+ *  Two subtle fixes baked in:
+ *
+ *  1) Ensure the auth user exists first. When the email has no existing
+ *     Supabase user, generateLink({ type: "magiclink" }) falls back to
+ *     signup-type semantics, and signup links don't honor redirectTo the
+ *     same way — they get rewritten to Site URL root. Creating the user
+ *     up front (idempotent; ignore "already registered") guarantees a
+ *     true magic-link every time.
+ *
+ *  2) The raw Supabase verify URL is wrapped in our own /auth/confirm
+ *     page, because single-use tokens get consumed by email link
+ *     scanners (Gmail, Outlook, Proofpoint, etc.) before the human ever
+ *     clicks. The wrapper requires an explicit button click. */
 export async function generateMagicLink(email: string, redirectPath: string): Promise<string> {
   const admin = createAdminClient();
+
+  // Idempotent: create the user if they don't exist yet. The Supabase
+  // admin SDK doesn't throw — it returns an error in the response — so
+  // we just ignore any "already registered" style response.
+  await admin.auth.admin.createUser({ email, email_confirm: true });
+
   const redirectTo = `${SITE_URL}${redirectPath}`;
   const { data, error } = await admin.auth.admin.generateLink({
     type: "magiclink",
