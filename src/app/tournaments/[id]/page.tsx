@@ -78,7 +78,11 @@ export default async function TournamentDetailPage({
     };
   });
 
-  const payment = tour.workspace?.payment_info ?? {};
+  const paymentInstructions = pick<string>(
+    tour.payment_instructions ?? "",
+    tour.payment_instructions_es ?? "",
+    locale
+  );
   const title: string = pick<string>(tour.title, tour.title_es ?? "", locale);
   const description = pick<string>(tour.description ?? "", tour.description_es ?? "", locale);
   const details = pick<string>(tour.details ?? "", tour.details_es ?? "", locale);
@@ -95,16 +99,19 @@ export default async function TournamentDetailPage({
     <div className="flex min-h-screen flex-col bg-zinc-950">
       <PublicHeader />
 
-      <main className="mx-auto max-w-3xl px-4 py-4 sm:px-6 sm:py-8">
+      <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-4 sm:px-6 sm:py-8">
         <Link href="/tournaments" className="mb-3 inline-block text-xs text-zinc-400 hover:text-white sm:text-sm">
           {d.back_to_list}
         </Link>
 
-        {/* Mobile-first hero: carousel on top */}
-        <div className="mb-6">
-          <ImageCarousel images={images} alt={title} />
-        </div>
+        <div className="lg:grid lg:grid-cols-[minmax(0,420px)_minmax(0,1fr)] lg:gap-10">
+          {/* Left: carousel. Stacks on mobile; sticky on desktop. */}
+          <div className="mb-6 lg:sticky lg:top-6 lg:mb-0 lg:self-start">
+            <ImageCarousel images={images} alt={title} />
+          </div>
 
+          {/* Right: scrollable details + signup */}
+          <div className="min-w-0">
         <h1 className="mb-2 text-2xl font-bold leading-tight tracking-tight text-white sm:text-4xl">
           {title}
         </h1>
@@ -199,10 +206,8 @@ export default async function TournamentDetailPage({
                 spots_label: c.is_full ? d.form_waitlist_only : formatSpotsLeft(locale, c.spots_remaining),
               }))}
               payment={{
-                venmo_qr_url: payment.venmo_qr_url,
-                ath_qr_url: payment.ath_qr_url,
-                venmo_handle: payment.venmo_handle,
-                ath_handle: payment.ath_handle,
+                qr_url: tour.payment_qr_url ?? undefined,
+                instructions: paymentInstructions,
               }}
               labels={{
                 form_category: d.form_category,
@@ -268,6 +273,8 @@ export default async function TournamentDetailPage({
             ))}
           </div>
         </section>
+          </div>
+        </div>
       </main>
       <PublicFooter />
     </div>

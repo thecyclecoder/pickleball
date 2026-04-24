@@ -31,6 +31,9 @@ type TournamentFormInput = {
   status: "draft" | "published" | "cancelled" | "completed";
   registration_open: boolean;
   images: TournamentImage[];
+  payment_qr_url: string;
+  payment_instructions: string;
+  payment_instructions_es: string;
 };
 
 type CategoryDraft = {
@@ -81,6 +84,9 @@ export function TournamentForm({
       status: "draft",
       registration_open: true,
       images: [],
+      payment_qr_url: "",
+      payment_instructions: "",
+      payment_instructions_es: "",
     }
   );
   const [categories, setCategories] = useState<CategoryDraft[]>(initialCategories ?? []);
@@ -153,6 +159,9 @@ export function TournamentForm({
         registration_open: form.registration_open,
         images: form.images,
         flyer_image_url: form.images[0] ? largestSrc(form.images[0]) : null,
+        payment_qr_url: form.payment_qr_url || null,
+        payment_instructions: form.payment_instructions || null,
+        payment_instructions_es: form.payment_instructions_es || null,
       };
 
       let tournamentId = form.id;
@@ -383,6 +392,17 @@ export function TournamentForm({
 
       <Section title="Categories">
         <CategoryEditor categories={categories} setCategories={setCategories} />
+      </Section>
+
+      <Section title="Payment" description="QR code for Venmo/ATH and payment instructions shown on the registration form.">
+        <PaymentEditor
+          qrUrl={form.payment_qr_url}
+          instructions={form.payment_instructions}
+          instructionsEs={form.payment_instructions_es}
+          onChangeQr={(v) => update("payment_qr_url", v)}
+          onChangeInstructions={(v) => update("payment_instructions", v)}
+          onChangeInstructionsEs={(v) => update("payment_instructions_es", v)}
+        />
       </Section>
 
       <Section title="Visibility">
@@ -651,6 +671,92 @@ function CategoryEditor({
       >
         + Add category
       </button>
+    </div>
+  );
+}
+
+function PaymentEditor({
+  qrUrl,
+  instructions,
+  instructionsEs,
+  onChangeQr,
+  onChangeInstructions,
+  onChangeInstructionsEs,
+}: {
+  qrUrl: string;
+  instructions: string;
+  instructionsEs: string;
+  onChangeQr: (v: string) => void;
+  onChangeInstructions: (v: string) => void;
+  onChangeInstructionsEs: (v: string) => void;
+}) {
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function upload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.currentTarget.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    setError(null);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch("/api/admin/upload-flyer", { method: "POST", body: fd });
+      const body = await res.json();
+      if (!res.ok) throw new Error(body.error || "Upload failed");
+      // Use the largest variant as the QR source (crisp on any device)
+      onChangeQr(largestSrc(body.image));
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <Label>QR code (Venmo or ATH Móvil)</Label>
+        {qrUrl ? (
+          <div className="flex items-start gap-4">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={qrUrl}
+              alt="Payment QR"
+              className="h-32 w-32 rounded-lg bg-white object-contain p-2"
+            />
+            <div className="flex flex-col gap-2">
+              <button
+                type="button"
+                onClick={() => onChangeQr("")}
+                className="text-xs text-red-400 hover:text-red-300"
+              >
+                Remove QR
+              </button>
+            </div>
+          </div>
+        ) : (
+          <label
+            className={`flex h-32 w-full max-w-xs cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-zinc-700 text-center text-xs text-zinc-400 hover:border-emerald-500 hover:text-emerald-400 ${
+              uploading ? "opacity-50" : ""
+            }`}
+          >
+            {uploading ? "Uploading…" : <><span className="mb-1 text-2xl leading-none">+</span><span>Upload QR image</span></>}
+            <input type="file" accept="image/*" className="hidden" onChange={upload} disabled={uploading} />
+          </label>
+        )}
+        {error && <p className="mt-2 text-xs text-red-400">{error}</p>}
+      </div>
+
+      <BilingualField
+        label="Payment instructions"
+        valueEn={instructions}
+        valueEs={instructionsEs}
+        onChangeEn={onChangeInstructions}
+        onChangeEs={onChangeInstructionsEs}
+        textarea
+        rows={4}
+      />
     </div>
   );
 }

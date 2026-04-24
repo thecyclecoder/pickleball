@@ -97,7 +97,10 @@ export default async function AdminTournamentEditPage({
             google_maps_url: tournament.google_maps_url ?? "",
             status: tournament.status,
             registration_open: tournament.registration_open,
-            images: tournament.images ?? (tournament.flyer_image_url ? [tournament.flyer_image_url] : []),
+            images: tournament.images ?? [],
+            payment_qr_url: tournament.payment_qr_url ?? "",
+            payment_instructions: tournament.payment_instructions ?? "",
+            payment_instructions_es: tournament.payment_instructions_es ?? "",
           }}
           initialCategories={tournament.categories.map((c) => ({
             id: c.id,

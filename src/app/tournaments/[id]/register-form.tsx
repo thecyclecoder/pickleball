@@ -12,10 +12,8 @@ type CategoryOpt = {
 };
 
 type Payment = {
-  venmo_qr_url?: string;
-  ath_qr_url?: string;
-  venmo_handle?: string;
-  ath_handle?: string;
+  qr_url?: string;
+  instructions?: string;
 };
 
 type Labels = {
@@ -67,7 +65,7 @@ export function RegisterForm({
   const [success, setSuccess] = useState<null | { status: "registered" | "waitlisted" }>(null);
 
   const selectedCategory = categories.find((c) => c.id === categoryId);
-  const showPayment = payment.venmo_qr_url || payment.ath_qr_url || payment.venmo_handle || payment.ath_handle;
+  const showPayment = Boolean(payment.qr_url || payment.instructions);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -261,27 +259,22 @@ function TextField({
 
 function PaymentPanel({ payment }: { payment: Payment }) {
   return (
-    <div className="grid gap-4 sm:grid-cols-2">
-      {(payment.venmo_qr_url || payment.venmo_handle) && (
-        <div className="rounded-lg border border-zinc-800 bg-zinc-950 p-4 text-center">
-          <p className="mb-2 text-xs font-medium uppercase tracking-wider text-zinc-400">Venmo</p>
-          {payment.venmo_qr_url && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={payment.venmo_qr_url} alt="Venmo QR" className="mx-auto mb-2 h-40 w-40 rounded bg-white object-contain p-2" />
-          )}
-          {payment.venmo_handle && <p className="text-sm text-white">{payment.venmo_handle}</p>}
-        </div>
-      )}
-      {(payment.ath_qr_url || payment.ath_handle) && (
-        <div className="rounded-lg border border-zinc-800 bg-zinc-950 p-4 text-center">
-          <p className="mb-2 text-xs font-medium uppercase tracking-wider text-zinc-400">ATH Móvil</p>
-          {payment.ath_qr_url && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={payment.ath_qr_url} alt="ATH Móvil QR" className="mx-auto mb-2 h-40 w-40 rounded bg-white object-contain p-2" />
-          )}
-          {payment.ath_handle && <p className="text-sm text-white">{payment.ath_handle}</p>}
-        </div>
-      )}
+    <div className="rounded-lg border border-zinc-800 bg-zinc-950 p-4">
+      <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-start">
+        {payment.qr_url && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={payment.qr_url}
+            alt="Payment QR"
+            className="h-40 w-40 flex-shrink-0 rounded bg-white object-contain p-2"
+          />
+        )}
+        {payment.instructions && (
+          <div className="min-w-0 flex-1 whitespace-pre-wrap text-sm leading-relaxed text-zinc-300">
+            {payment.instructions}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

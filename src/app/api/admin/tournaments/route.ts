@@ -47,6 +47,9 @@ export async function POST(req: Request) {
     google_maps_url,
     status,
     registration_open,
+    payment_qr_url,
+    payment_instructions,
+    payment_instructions_es,
   } = body;
 
   if (!title?.trim()) return NextResponse.json({ error: "Title is required" }, { status: 400 });
@@ -81,6 +84,9 @@ export async function POST(req: Request) {
       google_maps_url: google_maps_url ?? null,
       status: status || "draft",
       registration_open: registration_open ?? true,
+      payment_qr_url: payment_qr_url ?? null,
+      payment_instructions: payment_instructions ?? null,
+      payment_instructions_es: payment_instructions_es ?? null,
     })
     .select()
     .single();

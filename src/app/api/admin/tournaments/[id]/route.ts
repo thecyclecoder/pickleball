@@ -70,6 +70,9 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     "google_maps_url",
     "status",
     "registration_open",
+    "payment_qr_url",
+    "payment_instructions",
+    "payment_instructions_es",
   ];
   for (const key of allowed) {
     if (key in body) updates[key] = body[key];

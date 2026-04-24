@@ -74,6 +74,9 @@ export type Tournament = {
   google_maps_url: string | null;
   status: TournamentStatus;
   registration_open: boolean;
+  payment_qr_url: string | null;
+  payment_instructions: string | null;
+  payment_instructions_es: string | null;
   created_at: string;
   updated_at: string;
 };

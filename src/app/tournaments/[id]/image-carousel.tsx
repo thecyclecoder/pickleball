@@ -1,84 +1,67 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { largestSrc, pickSrc, srcSetAttr, type TournamentImage } from "@/lib/types";
+import { useEffect, useState } from "react";
+import { largestSrc, srcSetAttr, type TournamentImage } from "@/lib/types";
+
+const AUTO_ADVANCE_MS = 5000;
 
 export function ImageCarousel({ images, alt }: { images: TournamentImage[]; alt: string }) {
   const [index, setIndex] = useState(0);
-  const trackRef = useRef<HTMLDivElement>(null);
-  const thumbRefs = useRef<(HTMLButtonElement | null)[]>([]);
+  const [paused, setPaused] = useState(false);
+  const hasMultiple = images.length > 1;
 
-  // Keep track of which slide is visible on swipe via scroll snap
+  // Auto-advance every 5s. Pauses on hover/focus.
   useEffect(() => {
-    const el = trackRef.current;
-    if (!el) return;
-    let timeout: ReturnType<typeof setTimeout> | undefined;
-    function onScroll() {
-      if (timeout) clearTimeout(timeout);
-      timeout = setTimeout(() => {
-        if (!el) return;
-        const i = Math.round(el.scrollLeft / el.clientWidth);
-        setIndex(Math.max(0, Math.min(images.length - 1, i)));
-      }, 60);
-    }
-    el.addEventListener("scroll", onScroll, { passive: true });
-    return () => el.removeEventListener("scroll", onScroll);
-  }, [images.length]);
-
-  // Scroll active thumbnail into view
-  useEffect(() => {
-    thumbRefs.current[index]?.scrollIntoView({
-      behavior: "smooth",
-      inline: "center",
-      block: "nearest",
-    });
-  }, [index]);
-
-  function goTo(i: number) {
-    setIndex(i);
-    const el = trackRef.current;
-    if (el) el.scrollTo({ left: i * el.clientWidth, behavior: "smooth" });
-  }
+    if (!hasMultiple || paused) return;
+    const id = setInterval(() => {
+      setIndex((i) => (i + 1) % images.length);
+    }, AUTO_ADVANCE_MS);
+    return () => clearInterval(id);
+  }, [hasMultiple, paused, images.length]);
 
   if (images.length === 0) return null;
 
-  return (
-    <div className="w-full">
-      <div className="relative">
-        <div
-          ref={trackRef}
-          className="no-scrollbar flex snap-x snap-mandatory overflow-x-auto scroll-smooth rounded-2xl bg-zinc-900"
-          style={{ aspectRatio: "9 / 16", maxHeight: "min(80vh, 720px)" }}
-        >
-          {images.map((img, i) => (
-            <div
-              key={i}
-              className="relative flex w-full flex-shrink-0 snap-center items-center justify-center overflow-hidden"
-              style={{ aspectRatio: "9 / 16" }}
-            >
-              <picture>
-                <source
-                  type="image/webp"
-                  srcSet={srcSetAttr(img)}
-                  sizes="(min-width: 768px) 50vw, 100vw"
-                />
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={largestSrc(img)}
-                  srcSet={srcSetAttr(img)}
-                  sizes="(min-width: 768px) 50vw, 100vw"
-                  alt={`${alt} — ${i + 1}`}
-                  className="absolute inset-0 h-full w-full object-cover"
-                  loading={i === 0 ? "eager" : "lazy"}
-                  decoding="async"
-                  draggable={false}
-                />
-              </picture>
-            </div>
-          ))}
-        </div>
+  function goTo(i: number) {
+    setIndex(((i % images.length) + images.length) % images.length);
+  }
 
-        {images.length > 1 && (
+  return (
+    <div
+      className="w-full"
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
+      onFocus={() => setPaused(true)}
+      onBlur={() => setPaused(false)}
+    >
+      <div
+        className="relative overflow-hidden rounded-2xl bg-zinc-900"
+        style={{ aspectRatio: "9 / 16", maxHeight: "min(80vh, 720px)" }}
+      >
+        {images.map((img, i) => (
+          <picture key={i}>
+            <source
+              type="image/webp"
+              srcSet={srcSetAttr(img)}
+              sizes="(min-width: 1024px) 420px, (min-width: 768px) 50vw, 100vw"
+            />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={largestSrc(img)}
+              srcSet={srcSetAttr(img)}
+              sizes="(min-width: 1024px) 420px, (min-width: 768px) 50vw, 100vw"
+              alt={`${alt} — ${i + 1}`}
+              loading={i === 0 ? "eager" : "lazy"}
+              decoding="async"
+              draggable={false}
+              aria-hidden={i !== index}
+              className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-700 ease-in-out ${
+                i === index ? "opacity-100" : "opacity-0"
+              }`}
+            />
+          </picture>
+        ))}
+
+        {hasMultiple && (
           <>
             {/* Pagination dots */}
             <div className="pointer-events-none absolute bottom-3 left-0 right-0 flex justify-center gap-1.5">
@@ -92,13 +75,11 @@ export function ImageCarousel({ images, alt }: { images: TournamentImage[]; alt:
               ))}
             </div>
 
-            {/* Prev/next arrows — hidden on mobile, visible ≥sm */}
             <button
               type="button"
-              onClick={() => goTo(Math.max(0, index - 1))}
-              disabled={index === 0}
+              onClick={() => goTo(index - 1)}
               aria-label="Previous image"
-              className="absolute left-2 top-1/2 hidden -translate-y-1/2 items-center justify-center rounded-full bg-black/50 p-2 text-white backdrop-blur-sm transition-opacity hover:bg-black/70 disabled:opacity-30 sm:flex"
+              className="absolute left-2 top-1/2 flex -translate-y-1/2 items-center justify-center rounded-full bg-black/50 p-2 text-white backdrop-blur-sm transition-opacity hover:bg-black/70"
             >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M15 18l-6-6 6-6" strokeLinecap="round" strokeLinejoin="round" />
@@ -106,10 +87,9 @@ export function ImageCarousel({ images, alt }: { images: TournamentImage[]; alt:
             </button>
             <button
               type="button"
-              onClick={() => goTo(Math.min(images.length - 1, index + 1))}
-              disabled={index === images.length - 1}
+              onClick={() => goTo(index + 1)}
               aria-label="Next image"
-              className="absolute right-2 top-1/2 hidden -translate-y-1/2 items-center justify-center rounded-full bg-black/50 p-2 text-white backdrop-blur-sm transition-opacity hover:bg-black/70 disabled:opacity-30 sm:flex"
+              className="absolute right-2 top-1/2 flex -translate-y-1/2 items-center justify-center rounded-full bg-black/50 p-2 text-white backdrop-blur-sm transition-opacity hover:bg-black/70"
             >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M9 6l6 6-6 6" strokeLinecap="round" strokeLinejoin="round" />
@@ -119,14 +99,11 @@ export function ImageCarousel({ images, alt }: { images: TournamentImage[]; alt:
         )}
       </div>
 
-      {images.length > 1 && (
+      {hasMultiple && (
         <div className="no-scrollbar mt-3 flex gap-2 overflow-x-auto pb-1">
           {images.map((img, i) => (
             <button
               key={i}
-              ref={(el) => {
-                thumbRefs.current[i] = el;
-              }}
               type="button"
               onClick={() => goTo(i)}
               aria-label={`Go to image ${i + 1}`}
@@ -134,10 +111,18 @@ export function ImageCarousel({ images, alt }: { images: TournamentImage[]; alt:
               className={`relative flex-shrink-0 overflow-hidden rounded-lg border-2 transition-colors ${
                 i === index ? "border-emerald-500" : "border-transparent opacity-60 hover:opacity-100"
               }`}
-              style={{ width: 56, height: 100 }}
+              style={{ width: 64, height: 64 }}
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={pickSrc(img, 480)} alt="" className="h-full w-full object-cover" loading="lazy" decoding="async" />
+              <img
+                src={largestSrc(img)}
+                srcSet={srcSetAttr(img)}
+                sizes="64px"
+                alt=""
+                className="h-full w-full object-cover"
+                loading="lazy"
+                decoding="async"
+              />
             </button>
           ))}
         </div>

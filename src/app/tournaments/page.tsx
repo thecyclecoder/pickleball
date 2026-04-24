@@ -4,7 +4,7 @@ import { formatTournamentDate, formatTime } from "@/lib/format";
 import { categoryLabelI18n, formatSpotsOpen, getLocale, pick, t } from "@/lib/i18n";
 import { PublicHeader } from "@/components/public-header";
 import { PublicFooter } from "@/components/public-footer";
-import { ResponsiveImage } from "@/components/responsive-image";
+import { CoverSlideshow } from "@/components/cover-slideshow";
 import type { CategoryType, Team, TournamentImage } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -70,11 +70,11 @@ export default async function TournamentsPage() {
           </div>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {tournaments.map((tt) => {
+            {tournaments.map((tt, idx) => {
               const totalLimit = tt.categories.reduce((a, c) => a + c.team_limit, 0);
               const totalActive = tt.teams.filter((x) => x.status !== "cancelled").length;
               const spotsOpen = totalLimit - totalActive;
-              const cover = (tt.images ?? [])[0];
+              const imgs = tt.images ?? [];
               return (
                 <Link
                   key={tt.id}
@@ -82,12 +82,12 @@ export default async function TournamentsPage() {
                   className="group overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900 transition-colors hover:border-emerald-600"
                 >
                   <div className="aspect-[9/16] bg-zinc-800">
-                    {cover ? (
-                      <ResponsiveImage
-                        image={cover}
+                    {imgs.length > 0 ? (
+                      <CoverSlideshow
+                        images={imgs}
                         alt={tt.title}
                         sizes="(min-width: 1024px) 320px, (min-width: 640px) 45vw, 100vw"
-                        className="h-full w-full object-cover"
+                        stagger={idx * 600}
                       />
                     ) : tt.flyer_image_url ? (
                       // eslint-disable-next-line @next/next/no-img-element
