@@ -94,18 +94,20 @@ export default async function TournamentsPage() {
       )}
       <PublicHeader active="tournaments" />
 
-      <main className="mx-auto max-w-5xl px-6 py-10">
-        <h1 className="mb-2 text-3xl font-bold tracking-tight text-white">
-          {d.page_tournaments_title}
-        </h1>
-        <p className="mb-8 text-sm text-zinc-400">{d.page_tournaments_desc}</p>
+      <main className="mx-auto w-full max-w-5xl flex-1 px-0 py-6 sm:px-6 sm:py-10">
+        <div className="px-4 sm:px-0">
+          <h1 className="mb-2 text-3xl font-bold tracking-tight text-white">
+            {d.page_tournaments_title}
+          </h1>
+          <p className="mb-6 text-sm text-zinc-400 sm:mb-8">{d.page_tournaments_desc}</p>
+        </div>
 
         {tournaments.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-zinc-800 bg-zinc-900/30 p-10 text-center">
+          <div className="mx-4 rounded-xl border border-dashed border-zinc-800 bg-zinc-900/30 p-10 text-center sm:mx-0">
             <p className="text-sm text-zinc-400">{d.no_tournaments}</p>
           </div>
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-0 sm:gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {tournaments.map((tt, idx) => {
               const totalLimit = tt.categories.reduce((a, c) => a + c.team_limit, 0);
               const totalActive = tt.teams.filter((x) => x.status !== "cancelled").length;
@@ -115,7 +117,7 @@ export default async function TournamentsPage() {
                 <Link
                   key={tt.id}
                   href={`/tournaments/${tt.slug}`}
-                  className="group overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900 transition-colors hover:border-emerald-600"
+                  className="group overflow-hidden border-b border-zinc-800 bg-zinc-900 transition-colors hover:border-emerald-600 sm:rounded-xl sm:border sm:border-zinc-800"
                 >
                   <div className="aspect-[9/16] bg-zinc-800">
                     {imgs.length > 0 ? (

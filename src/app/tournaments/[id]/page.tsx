@@ -208,6 +208,11 @@ export default async function TournamentDetailPage({
 
           {/* Right: scrollable details + signup */}
           <div className="min-w-0">
+        {tour.workspace?.name && (
+          <p className="mb-2 text-xs font-medium uppercase tracking-[0.15em] text-emerald-500">
+            {tour.workspace.name}
+          </p>
+        )}
         <h1 className="mb-2 text-2xl font-bold leading-tight tracking-tight text-white sm:text-4xl">
           {title}
         </h1>

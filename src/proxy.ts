@@ -1,25 +1,20 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-const PUBLIC_ROUTES = [
-  "/login",
-  "/auth/callback",
-  "/tournaments",
-  "/api/tournaments",
-  "/api/locale",
-  "/invite",
-  "/",
-];
+// Paths that require an authenticated user (any logged-in user — not just
+// admins). Admin-only gating happens inside the /admin layout.
+const AUTH_REQUIRED_PREFIXES = ["/admin", "/me"];
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Allow public routes
-  if (PUBLIC_ROUTES.some((r) => pathname === r || pathname.startsWith(r + "/"))) {
+  const needsAuth = AUTH_REQUIRED_PREFIXES.some(
+    (p) => pathname === p || pathname.startsWith(p + "/")
+  );
+  if (!needsAuth) {
     return NextResponse.next();
   }
 
-  // Auth-gated routes (/admin/*)
   const response = NextResponse.next({ request });
 
   const supabase = createServerClient(
@@ -44,9 +39,10 @@ export async function proxy(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user && pathname.startsWith("/admin")) {
+  if (!user) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
+    url.searchParams.set("next", pathname + request.nextUrl.search);
     return NextResponse.redirect(url);
   }
 

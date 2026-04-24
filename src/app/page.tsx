@@ -48,21 +48,21 @@ export default async function Home() {
 
       {upcoming.length > 0 && (
         <section className="border-t border-zinc-900 bg-zinc-950">
-          <div className="mx-auto max-w-5xl px-6 py-16">
-            <div className="mb-6 flex items-baseline justify-between">
+          <div className="mx-auto max-w-5xl px-0 py-12 sm:px-6 sm:py-16">
+            <div className="mb-6 flex items-baseline justify-between px-4 sm:px-0">
               <h2 className="text-xl font-semibold text-white">{d.upcoming}</h2>
               <Link href="/tournaments" className="text-sm text-emerald-500 hover:text-emerald-400">
                 {d.see_all}
               </Link>
             </div>
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-0 sm:gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {upcoming.map((tt, idx) => {
                 const imgs = (tt.images as TournamentImage[] | null) ?? [];
                 return (
                 <Link
                   key={tt.id}
                   href={`/tournaments/${tt.slug}`}
-                  className="group overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900 transition-colors hover:border-emerald-600"
+                  className="group overflow-hidden border-b border-zinc-800 bg-zinc-900 transition-colors hover:border-emerald-600 sm:rounded-xl sm:border sm:border-zinc-800"
                 >
                   <div className="aspect-[9/16] bg-zinc-800">
                     {imgs.length > 0 ? (

@@ -1,15 +1,35 @@
+import { cookies } from "next/headers";
 import { createClient } from "./supabase/server";
 import { createAdminClient } from "./supabase/admin";
 import type { User } from "@supabase/supabase-js";
 import type { WorkspaceMember } from "./types";
 
+export const ACTIVE_WORKSPACE_COOKIE = "active_workspace_id";
+
 export type MembershipResult =
   | { status: "anon" }
   | { status: "denied"; user: User }
-  | { status: "ok"; user: User; member: WorkspaceMember };
+  | {
+      status: "ok";
+      user: User;
+      member: WorkspaceMember;
+      allMemberships: WorkspaceMember[];
+      canCreateWorkspace: boolean;
+    };
 
-/** Loads the current user's workspace membership. Returns the single
- *  membership row if present (the app is scoped to one workspace per user). */
+/** Returns the currently-signed-in user, or null. No membership check. */
+export async function getCurrentUser(): Promise<User | null> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  return user;
+}
+
+/** Resolve the current user's workspace membership. Handles multi-workspace
+ *  users via a cookie-scoped "active workspace". Callers that only need one
+ *  value can use `result.member`; callers that render a switcher use
+ *  `result.allMemberships`. Returns `denied` if the user has no memberships. */
 export async function getCurrentMembership(): Promise<MembershipResult> {
   const supabase = await createClient();
   const {
@@ -18,23 +38,47 @@ export async function getCurrentMembership(): Promise<MembershipResult> {
   if (!user) return { status: "anon" };
 
   const admin = createAdminClient();
-  const { data: members } = await admin
+  const email = (user.email ?? "").toLowerCase();
+  const { data: rows } = await admin
     .from("workspace_members")
     .select("*")
-    .or(`user_id.eq.${user.id},email.ilike.${user.email ?? ""}`)
-    .limit(1);
+    .or(`user_id.eq.${user.id}${email ? `,email.ilike.${email}` : ""}`)
+    .order("invited_at", { ascending: true });
 
-  const member = members?.[0] as WorkspaceMember | undefined;
-  if (!member) return { status: "denied", user };
+  const memberships = (rows ?? []) as WorkspaceMember[];
+  if (memberships.length === 0) return { status: "denied", user };
 
-  // Link user_id on first load if the trigger didn't run yet
-  if (!member.user_id && user.email && member.email.toLowerCase() === user.email.toLowerCase()) {
+  // Link any by-email-only rows to the user_id now that we know who they are
+  const unlinked = memberships.filter(
+    (m) => !m.user_id && m.email.toLowerCase() === email
+  );
+  if (unlinked.length > 0) {
+    const now = new Date().toISOString();
     await admin
       .from("workspace_members")
-      .update({ user_id: user.id, joined_at: new Date().toISOString() })
-      .eq("id", member.id);
-    member.user_id = user.id;
+      .update({ user_id: user.id, joined_at: now })
+      .in(
+        "id",
+        unlinked.map((m) => m.id)
+      );
+    for (const m of unlinked) {
+      m.user_id = user.id;
+      if (!m.joined_at) m.joined_at = now;
+    }
   }
 
-  return { status: "ok", user, member };
+  const cookieStore = await cookies();
+  const activeId = cookieStore.get(ACTIVE_WORKSPACE_COOKIE)?.value;
+  const active =
+    memberships.find((m) => m.workspace_id === activeId) ?? memberships[0];
+
+  const canCreateWorkspace = memberships.some((m) => m.role === "owner");
+
+  return {
+    status: "ok",
+    user,
+    member: active,
+    allMemberships: memberships,
+    canCreateWorkspace,
+  };
 }
