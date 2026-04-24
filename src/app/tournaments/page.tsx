@@ -1,4 +1,6 @@
+import type { Metadata } from "next";
 import Link from "next/link";
+import Script from "next/script";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { formatTournamentDate, formatTime } from "@/lib/format";
 import { categoryLabelI18n, formatSpotsOpen, getLocale, pick, t } from "@/lib/i18n";
@@ -6,6 +8,20 @@ import { PublicHeader } from "@/components/public-header";
 import { PublicFooter } from "@/components/public-footer";
 import { CoverSlideshow } from "@/components/cover-slideshow";
 import type { CategoryType, Team, TournamentImage } from "@/lib/types";
+import { tournamentCanonicalUrl } from "@/lib/seo";
+
+export const metadata: Metadata = {
+  title: "Pickleball Tournaments in Puerto Rico",
+  description:
+    "Browse upcoming pickleball tournaments in Puerto Rico. Register your team, see categories, spots remaining, and event details.",
+  alternates: { canonical: "/tournaments" },
+  openGraph: {
+    type: "website",
+    title: "Pickleball Tournaments in Puerto Rico",
+    description: "Browse and register for pickleball tournaments in Puerto Rico.",
+    url: "/tournaments",
+  },
+};
 
 export const dynamic = "force-dynamic";
 
@@ -54,8 +70,28 @@ export default async function TournamentsPage() {
 
   const tournaments = (data ?? []) as Row[];
 
+  const itemListJsonLd = tournaments.length > 0
+    ? {
+        "@context": "https://schema.org",
+        "@type": "ItemList",
+        itemListElement: tournaments.map((tt, i) => ({
+          "@type": "ListItem",
+          position: i + 1,
+          url: tournamentCanonicalUrl(tt.slug),
+          name: tt.title,
+        })),
+      }
+    : null;
+
   return (
     <div className="flex min-h-screen flex-col bg-zinc-950">
+      {itemListJsonLd && (
+        <Script
+          id="tournaments-list-jsonld"
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListJsonLd) }}
+        />
+      )}
       <PublicHeader active="tournaments" />
 
       <main className="mx-auto max-w-5xl px-6 py-10">

@@ -1,4 +1,6 @@
+import type { Metadata } from "next";
 import Link from "next/link";
+import Script from "next/script";
 import { notFound } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { formatTournamentDate, formatTime } from "@/lib/format";
@@ -13,10 +15,93 @@ import {
 import { PublicHeader } from "@/components/public-header";
 import { PublicFooter } from "@/components/public-footer";
 import { ImageCarousel } from "./image-carousel";
-import type { Tournament, TournamentCategory, Team, Player, Workspace } from "@/lib/types";
+import type { Tournament, TournamentCategory, Team, Player, Workspace, TournamentImage } from "@/lib/types";
+import { largestSrc } from "@/lib/types";
 import { RegisterForm } from "./register-form";
+import { buildSportsEventJsonLd, tournamentCanonicalUrl } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
+
+type TournamentSeoRow = {
+  slug: string;
+  title: string;
+  title_es: string | null;
+  description: string | null;
+  description_es: string | null;
+  details: string | null;
+  details_es: string | null;
+  start_date: string;
+  end_date: string | null;
+  start_time: string;
+  timezone: string;
+  location: string;
+  location_es: string | null;
+  address: string | null;
+  address_es: string | null;
+  status: Tournament["status"];
+  registration_open: boolean;
+  images: TournamentImage[] | null;
+  flyer_image_url: string | null;
+  workspace?: { name: string } | null;
+};
+
+async function loadForSeo(id: string): Promise<TournamentSeoRow | null> {
+  const admin = createAdminClient();
+  const isUuid = /^[0-9a-f-]{36}$/i.test(id);
+  const query = admin
+    .from("tournaments")
+    .select(
+      `slug, title, title_es, description, description_es, details, details_es,
+       start_date, end_date, start_time, timezone,
+       location, location_es, address, address_es,
+       status, registration_open, images, flyer_image_url,
+       workspace:workspaces (name)`
+    )
+    .eq("status", "published")
+    .limit(1);
+  const { data } = isUuid ? await query.eq("id", id) : await query.eq("slug", id);
+  return (data?.[0] as TournamentSeoRow | undefined) ?? null;
+}
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+  const { id } = await params;
+  const row = await loadForSeo(id);
+  if (!row) return { title: "Tournament not found" };
+
+  const title = row.title;
+  const description =
+    row.description?.trim() ||
+    row.details?.slice(0, 240)?.trim() ||
+    `Register for ${title} — pickleball in ${row.location}, Puerto Rico.`;
+
+  const cover = (row.images ?? [])[0];
+  const ogImage = cover ? largestSrc(cover) : row.flyer_image_url ?? "/icon-512.png";
+  const canonical = tournamentCanonicalUrl(row.slug);
+
+  return {
+    title,
+    description,
+    alternates: { canonical },
+    openGraph: {
+      type: "website",
+      title,
+      description,
+      url: canonical,
+      siteName: "Buen Tiro",
+      images: [{ url: ogImage, alt: title }],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: [ogImage],
+    },
+  };
+}
 
 type LoadedCategory = TournamentCategory;
 type LoadedTeam = Team & { players: Player[] };
@@ -95,8 +180,19 @@ export default async function TournamentDetailPage({
       ? [{ srcset: [{ w: 1200, url: tour.flyer_image_url }] }]
       : [];
 
+  const sportsEventJsonLd = buildSportsEventJsonLd({
+    tournament: tour,
+    workspaceName: tour.workspace?.name ?? "Buen Tiro",
+    coverImageUrls: images.map((img) => largestSrc(img)).filter(Boolean),
+  });
+
   return (
     <div className="flex min-h-screen flex-col bg-zinc-950">
+      <Script
+        id="tournament-jsonld"
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(sportsEventJsonLd) }}
+      />
       <PublicHeader />
 
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-4 sm:px-6 sm:py-8">
