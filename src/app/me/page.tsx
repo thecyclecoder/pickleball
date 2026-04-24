@@ -61,6 +61,10 @@ export default async function MePage() {
   const d = t(locale);
 
   const admin = createAdminClient();
+  // Inner-joined on teams / tournament / category: a player row whose team
+  // was hard-deleted (team_id=null after detach) simply won't appear here.
+  // We *do* still preserve that history in the admin Players view, which
+  // queries by players.workspace_id instead.
   const { data } = await admin
     .from("players")
     .select(

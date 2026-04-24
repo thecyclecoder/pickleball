@@ -12,12 +12,13 @@ type Raw = {
   email: string;
   rating: number;
   user_id: string | null;
+  created_at: string;
   team: {
     id: string;
     status: string;
     registered_at: string;
-    tournament: { id: string; slug: string; title: string };
-  };
+    tournament: { id: string; slug: string; title: string } | null;
+  } | null;
 };
 
 export type PlayerAggregate = {
@@ -36,68 +37,63 @@ export default async function AdminPlayersPage() {
   if (res.status !== "ok") return null;
 
   const admin = createAdminClient();
-  const { data: teamRows } = await admin
-    .from("teams")
-    .select("id")
-    .eq("workspace_id", res.member.workspace_id);
-  const teamIds = (teamRows ?? []).map((t) => t.id);
+  const { data: players } = await admin
+    .from("players")
+    .select(
+      `id, first_name, last_name, email, rating, user_id, created_at,
+       team:teams (
+         id, status, registered_at,
+         tournament:tournaments (id, slug, title)
+       )`
+    )
+    .eq("workspace_id", res.member.workspace_id)
+    .order("created_at", { ascending: false });
 
-  let aggregates: PlayerAggregate[] = [];
-  if (teamIds.length > 0) {
-    const { data: players } = await admin
-      .from("players")
-      .select(
-        `id, first_name, last_name, email, rating, user_id,
-         team:teams!inner (
-           id, status, registered_at,
-           tournament:tournaments!inner (id, slug, title)
-         )`
-      )
-      .in("team_id", teamIds)
-      .order("registered_at", { ascending: false, referencedTable: "teams" });
+  const rows = (players ?? []) as unknown as Raw[];
 
-    const rows = (players ?? []) as unknown as Raw[];
-
-    // Aggregate by lowercased email
-    const byEmail = new Map<string, PlayerAggregate>();
-    for (const r of rows) {
-      const key = r.email.toLowerCase();
-      const entry = byEmail.get(key);
-      const tour = r.team.tournament;
-      const tourEntry = {
-        id: tour.id,
-        slug: tour.slug,
-        title: tour.title,
-        registered_at: r.team.registered_at,
-        status: r.team.status,
-      };
-      if (!entry) {
-        byEmail.set(key, {
-          email: key,
-          first_name: r.first_name,
-          last_name: r.last_name,
-          rating: Number(r.rating),
-          has_account: !!r.user_id,
-          registration_count: 1,
-          last_registered_at: r.team.registered_at,
-          tournaments: [tourEntry],
-        });
-      } else {
-        entry.registration_count += 1;
-        entry.tournaments.push(tourEntry);
-        if (r.user_id) entry.has_account = true;
-        if (r.team.registered_at > entry.last_registered_at) {
-          entry.last_registered_at = r.team.registered_at;
-          entry.first_name = r.first_name;
-          entry.last_name = r.last_name;
-          entry.rating = Number(r.rating);
+  // Aggregate by lowercased email so a person who registered for N
+  // tournaments shows up as one row with N in the "Registrations" column.
+  const byEmail = new Map<string, PlayerAggregate>();
+  for (const r of rows) {
+    const key = r.email.toLowerCase();
+    const entry = byEmail.get(key);
+    const registeredAt = r.team?.registered_at ?? r.created_at;
+    const tour = r.team?.tournament ?? null;
+    const tourEntry = tour
+      ? {
+          id: tour.id,
+          slug: tour.slug,
+          title: tour.title,
+          registered_at: registeredAt,
+          status: r.team?.status ?? "registered",
         }
+      : null;
+    if (!entry) {
+      byEmail.set(key, {
+        email: key,
+        first_name: r.first_name,
+        last_name: r.last_name,
+        rating: Number(r.rating),
+        has_account: !!r.user_id,
+        registration_count: 1,
+        last_registered_at: registeredAt,
+        tournaments: tourEntry ? [tourEntry] : [],
+      });
+    } else {
+      entry.registration_count += 1;
+      if (tourEntry) entry.tournaments.push(tourEntry);
+      if (r.user_id) entry.has_account = true;
+      if (registeredAt > entry.last_registered_at) {
+        entry.last_registered_at = registeredAt;
+        entry.first_name = r.first_name;
+        entry.last_name = r.last_name;
+        entry.rating = Number(r.rating);
       }
     }
-    aggregates = Array.from(byEmail.values()).sort(
-      (a, b) => b.last_registered_at.localeCompare(a.last_registered_at)
-    );
   }
+  const aggregates = Array.from(byEmail.values()).sort((a, b) =>
+    b.last_registered_at.localeCompare(a.last_registered_at)
+  );
 
   const withAccount = aggregates.filter((p) => p.has_account).length;
   const pending = aggregates.length - withAccount;
