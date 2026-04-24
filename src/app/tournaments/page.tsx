@@ -3,7 +3,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { formatTournamentDate, formatTime } from "@/lib/format";
 import { categoryLabelI18n, getLocale, pick, t } from "@/lib/i18n";
 import { PublicHeader } from "@/components/public-header";
-import type { CategoryType, Team } from "@/lib/types";
+import { ResponsiveImage } from "@/components/responsive-image";
+import type { CategoryType, Team, TournamentImage } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -15,6 +16,7 @@ type Row = {
   description: string | null;
   description_es: string | null;
   flyer_image_url: string | null;
+  images: TournamentImage[] | null;
   start_date: string;
   end_date: string | null;
   start_time: string;
@@ -40,7 +42,7 @@ export default async function TournamentsPage() {
   const { data } = await admin
     .from("tournaments")
     .select(
-      `id, slug, title, title_es, description, description_es, flyer_image_url,
+      `id, slug, title, title_es, description, description_es, flyer_image_url, images,
        start_date, end_date, start_time, timezone,
        location, location_es, registration_open,
        categories:tournament_categories (id, type, rating, label, label_es, team_limit),
@@ -71,14 +73,22 @@ export default async function TournamentsPage() {
               const totalLimit = tt.categories.reduce((a, c) => a + c.team_limit, 0);
               const totalActive = tt.teams.filter((x) => x.status !== "cancelled").length;
               const spotsOpen = totalLimit - totalActive;
+              const cover = (tt.images ?? [])[0];
               return (
                 <Link
                   key={tt.id}
                   href={`/tournaments/${tt.slug}`}
                   className="group overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900 transition-colors hover:border-emerald-600"
                 >
-                  <div className="aspect-[4/3] bg-zinc-800">
-                    {tt.flyer_image_url ? (
+                  <div className="aspect-[9/16] bg-zinc-800">
+                    {cover ? (
+                      <ResponsiveImage
+                        image={cover}
+                        alt={tt.title}
+                        sizes="(min-width: 1024px) 320px, (min-width: 640px) 45vw, 100vw"
+                        className="h-full w-full object-cover"
+                      />
+                    ) : tt.flyer_image_url ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
                         src={tt.flyer_image_url}

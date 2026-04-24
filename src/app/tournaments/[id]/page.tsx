@@ -79,7 +79,9 @@ export default async function TournamentDetailPage({
 
   const images = (tour.images && tour.images.length > 0)
     ? tour.images
-    : (tour.flyer_image_url ? [tour.flyer_image_url] : []);
+    : tour.flyer_image_url
+      ? [{ srcset: [{ w: 1200, url: tour.flyer_image_url }] }]
+      : [];
 
   return (
     <div className="min-h-screen bg-zinc-950">

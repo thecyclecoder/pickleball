@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { largestSrc, pickSrc, srcSetAttr, type TournamentImage } from "@/lib/types";
 
-export function ImageCarousel({ images, alt }: { images: string[]; alt: string }) {
+export function ImageCarousel({ images, alt }: { images: TournamentImage[]; alt: string }) {
   const [index, setIndex] = useState(0);
   const trackRef = useRef<HTMLDivElement>(null);
   const thumbRefs = useRef<(HTMLButtonElement | null)[]>([]);
@@ -49,20 +50,30 @@ export function ImageCarousel({ images, alt }: { images: string[]; alt: string }
           className="no-scrollbar flex snap-x snap-mandatory overflow-x-auto scroll-smooth rounded-2xl bg-zinc-900"
           style={{ aspectRatio: "9 / 16", maxHeight: "min(80vh, 720px)" }}
         >
-          {images.map((src, i) => (
+          {images.map((img, i) => (
             <div
-              key={src + i}
+              key={i}
               className="relative flex w-full flex-shrink-0 snap-center items-center justify-center overflow-hidden"
               style={{ aspectRatio: "9 / 16" }}
             >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={src}
-                alt={`${alt} — ${i + 1}`}
-                className="absolute inset-0 h-full w-full object-cover"
-                loading={i === 0 ? "eager" : "lazy"}
-                draggable={false}
-              />
+              <picture>
+                <source
+                  type="image/webp"
+                  srcSet={srcSetAttr(img)}
+                  sizes="(min-width: 768px) 50vw, 100vw"
+                />
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={largestSrc(img)}
+                  srcSet={srcSetAttr(img)}
+                  sizes="(min-width: 768px) 50vw, 100vw"
+                  alt={`${alt} — ${i + 1}`}
+                  className="absolute inset-0 h-full w-full object-cover"
+                  loading={i === 0 ? "eager" : "lazy"}
+                  decoding="async"
+                  draggable={false}
+                />
+              </picture>
             </div>
           ))}
         </div>
@@ -110,9 +121,9 @@ export function ImageCarousel({ images, alt }: { images: string[]; alt: string }
 
       {images.length > 1 && (
         <div className="no-scrollbar mt-3 flex gap-2 overflow-x-auto pb-1">
-          {images.map((src, i) => (
+          {images.map((img, i) => (
             <button
-              key={src + i}
+              key={i}
               ref={(el) => {
                 thumbRefs.current[i] = el;
               }}
@@ -126,7 +137,7 @@ export function ImageCarousel({ images, alt }: { images: string[]; alt: string }
               style={{ width: 56, height: 100 }}
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={src} alt="" className="h-full w-full object-cover" />
+              <img src={pickSrc(img, 480)} alt="" className="h-full w-full object-cover" loading="lazy" decoding="async" />
             </button>
           ))}
         </div>

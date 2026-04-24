@@ -1,4 +1,29 @@
 export type CategoryType = "MD" | "WD" | "MXD";
+
+export type TournamentImage = {
+  srcset: { w: number; url: string }[];
+};
+
+export const IMAGE_WIDTHS = [480, 800, 1200, 1800] as const;
+
+export function largestSrc(img: TournamentImage): string {
+  const sorted = [...img.srcset].sort((a, b) => b.w - a.w);
+  return sorted[0]?.url ?? "";
+}
+
+export function pickSrc(img: TournamentImage, targetWidth: number): string {
+  const sorted = [...img.srcset].sort((a, b) => a.w - b.w);
+  for (const s of sorted) if (s.w >= targetWidth) return s.url;
+  return sorted[sorted.length - 1]?.url ?? "";
+}
+
+export function srcSetAttr(img: TournamentImage): string {
+  return img.srcset
+    .slice()
+    .sort((a, b) => a.w - b.w)
+    .map((s) => `${s.url} ${s.w}w`)
+    .join(", ");
+}
 export type TournamentStatus = "draft" | "published" | "cancelled" | "completed";
 export type TeamStatus = "registered" | "confirmed" | "waitlisted" | "cancelled";
 export type PaymentStatus = "unpaid" | "paid" | "refunded";
@@ -34,7 +59,7 @@ export type Tournament = {
   description: string | null;
   details: string | null;
   flyer_image_url: string | null;
-  images: string[];
+  images: TournamentImage[];
   title_es: string | null;
   description_es: string | null;
   details_es: string | null;

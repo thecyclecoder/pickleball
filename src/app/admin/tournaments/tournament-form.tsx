@@ -2,7 +2,14 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { CATEGORY_RATINGS, CATEGORY_TYPES, type CategoryType } from "@/lib/types";
+import {
+  CATEGORY_RATINGS,
+  CATEGORY_TYPES,
+  largestSrc,
+  pickSrc,
+  type CategoryType,
+  type TournamentImage,
+} from "@/lib/types";
 
 type TournamentFormInput = {
   id?: string;
@@ -23,7 +30,7 @@ type TournamentFormInput = {
   google_maps_url: string;
   status: "draft" | "published" | "cancelled" | "completed";
   registration_open: boolean;
-  images: string[];
+  images: TournamentImage[];
 };
 
 type CategoryDraft = {
@@ -90,14 +97,14 @@ export function TournamentForm({
     setUploadingImage(true);
     setError(null);
     try {
-      const uploaded: string[] = [];
+      const uploaded: TournamentImage[] = [];
       for (const file of Array.from(files)) {
         const fd = new FormData();
         fd.append("file", file);
         const res = await fetch("/api/admin/upload-flyer", { method: "POST", body: fd });
         const body = await res.json();
         if (!res.ok) throw new Error(body.error || "Upload failed");
-        uploaded.push(body.url);
+        uploaded.push(body.image);
       }
       setForm((f) => ({ ...f, images: [...f.images, ...uploaded] }));
     } catch (e) {
@@ -145,7 +152,7 @@ export function TournamentForm({
         status: form.status,
         registration_open: form.registration_open,
         images: form.images,
-        flyer_image_url: form.images[0] ?? null,
+        flyer_image_url: form.images[0] ? largestSrc(form.images[0]) : null,
       };
 
       let tournamentId = form.id;
@@ -224,14 +231,14 @@ export function TournamentForm({
       <Section title="Flyer images" description="9:16 ratio (Instagram Reel) works best. First image is the cover.">
         <div className="space-y-3">
           <div className="flex flex-wrap gap-3">
-            {form.images.map((src, i) => (
+            {form.images.map((img, i) => (
               <div
-                key={src + i}
+                key={i}
                 className="group relative overflow-hidden rounded-lg border border-zinc-800 bg-zinc-950"
                 style={{ width: 90, height: 160 }}
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={src} alt="" className="h-full w-full object-cover" />
+                <img src={pickSrc(img, 480)} alt="" className="h-full w-full object-cover" />
                 <div className="absolute inset-0 flex flex-col justify-between bg-black/40 p-1 opacity-0 transition-opacity group-hover:opacity-100">
                   <div className="flex justify-end gap-0.5">
                     <button
