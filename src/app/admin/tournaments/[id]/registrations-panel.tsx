@@ -120,17 +120,6 @@ export function RegistrationsPanel({
                               <option value="waitlisted">Waitlisted</option>
                               <option value="cancelled">Cancelled</option>
                             </select>
-                            <select
-                              disabled={teamBusy}
-                              value={t.payment_status}
-                              onChange={(e) => teamAction(t.id, { payment_status: e.target.value })}
-                              className="rounded-md border border-zinc-800 bg-zinc-900 px-2 py-1 text-xs text-white"
-                              aria-label="Team payment status"
-                            >
-                              <option value="unpaid">Unpaid</option>
-                              <option value="paid">Paid</option>
-                              <option value="refunded">Refunded</option>
-                            </select>
                             <button
                               type="button"
                               disabled={teamBusy}
