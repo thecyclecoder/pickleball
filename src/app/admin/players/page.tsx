@@ -12,6 +12,7 @@ type Raw = {
   email: string;
   rating: number;
   user_id: string | null;
+  confirmed_at: string | null;
   created_at: string;
   team: {
     id: string;
@@ -40,7 +41,7 @@ export default async function AdminPlayersPage() {
   const { data: players } = await admin
     .from("players")
     .select(
-      `id, first_name, last_name, email, rating, user_id, created_at,
+      `id, first_name, last_name, email, rating, user_id, confirmed_at, created_at,
        team:teams (
          id, status, registered_at,
          tournament:tournaments (id, slug, title)
@@ -74,7 +75,7 @@ export default async function AdminPlayersPage() {
         first_name: r.first_name,
         last_name: r.last_name,
         rating: Number(r.rating),
-        has_account: !!r.user_id,
+        has_account: !!r.confirmed_at,
         registration_count: 1,
         last_registered_at: registeredAt,
         tournaments: tourEntry ? [tourEntry] : [],
@@ -82,7 +83,7 @@ export default async function AdminPlayersPage() {
     } else {
       entry.registration_count += 1;
       if (tourEntry) entry.tournaments.push(tourEntry);
-      if (r.user_id) entry.has_account = true;
+      if (r.confirmed_at) entry.has_account = true;
       if (registeredAt > entry.last_registered_at) {
         entry.last_registered_at = registeredAt;
         entry.first_name = r.first_name;

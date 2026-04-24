@@ -7,15 +7,15 @@ import { createClient } from "@/lib/supabase/client";
 /** Handles the URL-hash-based implicit flow that Supabase uses for
  *  admin-generated magic links. When a recipient clicks the link in an
  *  email, they land on our site with `#access_token=…&refresh_token=…` in
- *  the URL. This component:
- *  1. Parses those tokens from the hash
- *  2. Stores a real session via supabase.auth.setSession
- *  3. Strips the hash so the URL is clean (and safe to share)
- *  4. Refreshes server components so the page re-renders as signed-in
+ *  the URL.
  *
- *  If the user was meant to land on a specific page (like the tournament
- *  registration splash) the email link already includes that path; we
- *  just swap the session in place without redirecting. */
+ *  Flow:
+ *  1. Parse the tokens from the hash
+ *  2. Call supabase.auth.setSession — @supabase/ssr persists to cookies,
+ *     so subsequent SSR sees the user signed-in
+ *  3. Navigate to /me (player dashboard) — we always do this for a magic
+ *     link sign-in rather than relying on Supabase's redirect_to, which
+ *     sometimes silently rewrites back to the Site URL root. */
 export function AuthHashBootstrap() {
   const router = useRouter();
   useEffect(() => {
@@ -34,9 +34,11 @@ export function AuthHashBootstrap() {
         access_token: accessToken,
         refresh_token: refreshToken,
       });
-      // Clear the hash either way so tokens don't linger in the URL bar
       history.replaceState(null, "", window.location.pathname + window.location.search);
-      if (!error) router.refresh();
+      if (!error) {
+        // Every magic-link sign-in lands the user on their profile.
+        router.replace("/me");
+      }
     })();
   }, [router]);
 

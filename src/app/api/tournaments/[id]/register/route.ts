@@ -179,10 +179,6 @@ async function sendRegistrationEmails(args: {
   const { tournament, category, team, p1, p2 } = args;
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://buentiro.app";
   const tournamentUrl = `${siteUrl}/tournaments/${tournament.slug}`;
-  // Post-confirmation destination — lands a signed-in player on their
-  // dashboard where this fresh registration is waiting. The splash page
-  // is still the anon confirmation view at /tournaments/<slug>/registered/<teamId>.
-  const postConfirmPath = "/me";
   const waitlisted = team.status === "waitlisted";
   const catLabel = categoryLabel({
     type: category.type,
@@ -197,13 +193,13 @@ async function sendRegistrationEmails(args: {
   const timeLabel = formatTime(tournament.start_time, tournament.timezone);
 
   const [link1, link2] = await Promise.all([
-    generateMagicLink(p1.email, postConfirmPath).catch((e) => {
+    generateMagicLink(p1.email).catch((e) => {
       console.error("magic link p1 failed:", e);
-      return `${siteUrl}${postConfirmPath}`;
+      return `${siteUrl}/login`;
     }),
-    generateMagicLink(p2.email, postConfirmPath).catch((e) => {
+    generateMagicLink(p2.email).catch((e) => {
       console.error("magic link p2 failed:", e);
-      return `${siteUrl}${postConfirmPath}`;
+      return `${siteUrl}/login`;
     }),
   ]);
 
