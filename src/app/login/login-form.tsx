@@ -1,17 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
 export function LoginForm({ next, error }: { next?: string; error?: string }) {
-  const router = useRouter();
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [err, setErr] = useState<string | null>(
     error === "auth" ? "Sign-in failed. Please try again." : null
   );
+  const [sentTo, setSentTo] = useState<string | null>(null);
 
   const nextPath = next && next.startsWith("/") ? next : "/me";
 
@@ -25,21 +23,45 @@ export function LoginForm({ next, error }: { next?: string; error?: string }) {
     });
   }
 
-  async function signInPassword(e: React.FormEvent) {
+  async function sendMagicLink(e: React.FormEvent) {
     e.preventDefault();
     setErr(null);
     setSubmitting(true);
     try {
       const supabase = createClient();
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      const { error } = await supabase.auth.signInWithOtp({
+        email,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(nextPath)}`,
+        },
+      });
       if (error) throw error;
-      router.push(nextPath);
-      router.refresh();
+      setSentTo(email);
     } catch (e) {
-      setErr((e as Error).message || "Sign-in failed");
+      setErr((e as Error).message || "Couldn't send magic link");
     } finally {
       setSubmitting(false);
     }
+  }
+
+  if (sentTo) {
+    return (
+      <div className="space-y-3">
+        <div className="rounded-lg border border-emerald-800 bg-emerald-950/30 p-4 text-sm text-emerald-200">
+          Check your inbox. We sent a sign-in link to <strong>{sentTo}</strong>. Click it to get signed in.
+        </div>
+        <button
+          type="button"
+          onClick={() => {
+            setSentTo(null);
+            setEmail("");
+          }}
+          className="w-full text-center text-xs text-zinc-500 hover:text-zinc-300"
+        >
+          Use a different email
+        </button>
+      </div>
+    );
   }
 
   return (
@@ -59,7 +81,7 @@ export function LoginForm({ next, error }: { next?: string; error?: string }) {
         <span className="h-px flex-1 bg-zinc-800" />
       </div>
 
-      <form onSubmit={signInPassword} className="space-y-3">
+      <form onSubmit={sendMagicLink} className="space-y-3">
         <input
           type="email"
           required
@@ -67,16 +89,7 @@ export function LoginForm({ next, error }: { next?: string; error?: string }) {
           inputMode="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          placeholder="Email"
-          className="w-full rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-2.5 text-sm text-white focus:border-emerald-600 focus:outline-none"
-        />
-        <input
-          type="password"
-          required
-          autoComplete="current-password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          placeholder="Password"
+          placeholder="you@example.com"
           className="w-full rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-2.5 text-sm text-white focus:border-emerald-600 focus:outline-none"
         />
         {err && (
@@ -86,11 +99,14 @@ export function LoginForm({ next, error }: { next?: string; error?: string }) {
         )}
         <button
           type="submit"
-          disabled={submitting}
+          disabled={submitting || !email}
           className="w-full rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-emerald-500 disabled:bg-zinc-800"
         >
-          {submitting ? "Signing in…" : "Sign in"}
+          {submitting ? "Sending…" : "Email me a sign-in link"}
         </button>
+        <p className="text-center text-[11px] text-zinc-500">
+          No password needed. We&apos;ll email you a link to sign in.
+        </p>
       </form>
     </div>
   );

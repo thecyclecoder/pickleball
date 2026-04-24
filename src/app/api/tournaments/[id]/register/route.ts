@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentUser } from "@/lib/auth";
 import { RATING_OPTIONS } from "@/lib/types";
+import { categoryLabel } from "@/lib/categories";
+import { formatTournamentDate, formatTime } from "@/lib/format";
+import { generateMagicLink, sendRegistrationEmail } from "@/lib/email";
 
 type PlayerInput = {
   first_name?: string;
@@ -119,10 +122,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   // If the submitter is signed in and matches one of the player emails,
   // link that player directly (the DB trigger also covers the email match).
   const currentUser = await getCurrentUser();
-  const userId =
-    currentUser && currentUser.email
-      ? currentUser.email.toLowerCase()
-      : null;
+  const currentEmail =
+    currentUser && currentUser.email ? currentUser.email.toLowerCase() : null;
 
   // Create players
   const { error: playersErr } = await admin.from("players").insert([
@@ -130,13 +131,13 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       team_id: team.id,
       ...p1,
       is_captain: true,
-      user_id: userId && p1.email === userId ? currentUser!.id : null,
+      user_id: currentEmail && p1.email === currentEmail ? currentUser!.id : null,
     },
     {
       team_id: team.id,
       ...p2,
       is_captain: false,
-      user_id: userId && p2.email === userId ? currentUser!.id : null,
+      user_id: currentEmail && p2.email === currentEmail ? currentUser!.id : null,
     },
   ]);
   if (playersErr) {
@@ -145,5 +146,93 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     return NextResponse.json({ error: playersErr.message }, { status: 500 });
   }
 
+  // Fire off two confirmation emails. Don't block the response on a slow SMTP —
+  // we await in a best-effort try/catch so errors are logged but the client
+  // still gets redirected to the splash.
+  await sendRegistrationEmails({
+    tournament,
+    category: cat,
+    team,
+    p1,
+    p2,
+  }).catch((e) => console.error("Registration emails failed:", e));
+
   return NextResponse.json({ team_id: team.id, status });
+}
+
+async function sendRegistrationEmails(args: {
+  tournament: {
+    id: string;
+    slug: string;
+    title: string;
+    start_date: string;
+    end_date: string | null;
+    start_time: string;
+    timezone: string;
+    location: string;
+  };
+  category: { type: "MD" | "WD" | "MXD"; rating: string; label: string | null };
+  team: { id: string; status: string };
+  p1: { first_name: string; last_name: string; email: string };
+  p2: { first_name: string; last_name: string; email: string };
+}) {
+  const { tournament, category, team, p1, p2 } = args;
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://buentiro.app";
+  const tournamentUrl = `${siteUrl}/tournaments/${tournament.slug}`;
+  const splashPath = `/tournaments/${tournament.slug}/registered/${team.id}`;
+  const waitlisted = team.status === "waitlisted";
+  const catLabel = categoryLabel({
+    type: category.type,
+    rating: category.rating,
+    label: category.label ?? null,
+  });
+  const dateLabel = formatTournamentDate(
+    tournament.start_date,
+    tournament.end_date,
+    tournament.timezone
+  );
+  const timeLabel = formatTime(tournament.start_time, tournament.timezone);
+
+  const [link1, link2] = await Promise.all([
+    generateMagicLink(p1.email, splashPath).catch((e) => {
+      console.error("magic link p1 failed:", e);
+      return `${siteUrl}${splashPath}`;
+    }),
+    generateMagicLink(p2.email, splashPath).catch((e) => {
+      console.error("magic link p2 failed:", e);
+      return `${siteUrl}${splashPath}`;
+    }),
+  ]);
+
+  await Promise.all([
+    sendRegistrationEmail({
+      toEmail: p1.email,
+      toFirstName: p1.first_name,
+      partnerFullName: `${p2.first_name} ${p2.last_name}`,
+      tournamentTitle: tournament.title,
+      tournamentStartDateLabel: dateLabel,
+      tournamentTimeLabel: timeLabel,
+      tournamentLocation: tournament.location,
+      categoryLabel: catLabel,
+      tournamentUrl,
+      confirmLink: link1,
+      waitlisted,
+      mode: "self",
+    }),
+    sendRegistrationEmail({
+      toEmail: p2.email,
+      toFirstName: p2.first_name,
+      partnerFullName: `${p1.first_name} ${p1.last_name}`,
+      tournamentTitle: tournament.title,
+      tournamentStartDateLabel: dateLabel,
+      tournamentTimeLabel: timeLabel,
+      tournamentLocation: tournament.location,
+      categoryLabel: catLabel,
+      tournamentUrl,
+      confirmLink: link2,
+      waitlisted,
+      mode: "partner",
+      submitterFirstName: p1.first_name,
+    }),
+  ]);
 }

@@ -6,7 +6,6 @@ import { formatTournamentDate, formatTime } from "@/lib/format";
 import { categoryLabelI18n, getLocale, pick, t } from "@/lib/i18n";
 import { PublicHeader } from "@/components/public-header";
 import { PublicFooter } from "@/components/public-footer";
-import { AccountCta } from "./account-cta";
 
 export const dynamic = "force-dynamic";
 
@@ -139,13 +138,16 @@ export default async function RegisteredPage({
         )}
 
         {!user ? (
-          <AccountCta
-            nextPath={`/tournaments/${tour.slug}/registered/${team.id}`}
-            prefillEmail={players.find((p) => p.is_captain)?.email ?? players[0]?.email ?? ""}
-            prefillFirstName={players.find((p) => p.is_captain)?.first_name ?? ""}
-            prefillLastName={players.find((p) => p.is_captain)?.last_name ?? ""}
-            locale={locale}
-          />
+          <section className="mt-6 rounded-2xl border border-emerald-800/50 bg-emerald-950/10 p-5 sm:p-6">
+            <h2 className="mb-2 text-lg font-semibold text-white">
+              {locale === "es" ? "Revisa tu correo" : "Check your email"}
+            </h2>
+            <p className="text-sm text-zinc-300">
+              {locale === "es"
+                ? "Enviamos enlaces de confirmación a ambos jugadores. Haz clic en “Confirma tu cupo” en tu correo para iniciar sesión y guardar tu inscripción. No se necesita contraseña."
+                : "We sent confirmation links to both players. Click “Confirm your spot” in your inbox to sign in and save your registration. No password needed."}
+            </p>
+          </section>
         ) : (
           <div className="mt-6 rounded-2xl border border-zinc-800 bg-zinc-900 p-5 text-center sm:p-6">
             <p className="mb-3 text-sm text-zinc-300">

@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { LoginForm } from "./login-form";
@@ -25,20 +24,10 @@ export default async function LoginPage({
           <Logo height={36} />
         </div>
         <p className="mb-6 text-center text-xs uppercase tracking-[0.2em] text-zinc-500">
-          Sign in
+          Sign in or sign up
         </p>
 
         <LoginForm next={sp.next} error={sp.error} />
-
-        <p className="mt-6 text-center text-xs text-zinc-500">
-          Don&apos;t have an account?{" "}
-          <Link
-            href={sp.next ? `/signup?next=${encodeURIComponent(sp.next)}` : "/signup"}
-            className="text-emerald-400 hover:text-emerald-300"
-          >
-            Sign up
-          </Link>
-        </p>
       </div>
     </div>
   );
