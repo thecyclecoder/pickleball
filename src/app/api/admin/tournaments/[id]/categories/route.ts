@@ -27,6 +27,14 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const teamLimit = Number(body.team_limit ?? 16);
   const sortOrder = Number(body.sort_order ?? 0);
   const formatId = body.format_id ?? null;
+  const poolCount =
+    body.pool_count === null || body.pool_count === undefined || body.pool_count === ""
+      ? null
+      : Number(body.pool_count);
+  const advancePerPool =
+    body.advance_per_pool === null || body.advance_per_pool === undefined || body.advance_per_pool === ""
+      ? null
+      : Number(body.advance_per_pool);
 
   if (!CATEGORY_TYPES.includes(type)) {
     return NextResponse.json({ error: "Invalid type" }, { status: 400 });
@@ -47,6 +55,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       team_limit: teamLimit,
       sort_order: sortOrder,
       format_id: formatId,
+      pool_count: poolCount,
+      advance_per_pool: advancePerPool,
     })
     .select()
     .single();

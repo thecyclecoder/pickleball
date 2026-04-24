@@ -46,6 +46,8 @@ type CategoryDraft = {
   team_limit: number;
   sort_order: number;
   format_id: string | null;
+  pool_count: number | null;
+  advance_per_pool: number | null;
 };
 
 const TIMEZONES = [
@@ -583,6 +585,8 @@ function CategoryEditor({
         team_limit: 16,
         sort_order: categories.length,
         format_id: null,
+        pool_count: null,
+        advance_per_pool: null,
       },
     ]);
   }
@@ -675,6 +679,42 @@ function CategoryEditor({
                   </option>
                 ))}
               </select>
+            </div>
+          </div>
+          <div className="mt-3 grid gap-3 sm:grid-cols-3">
+            <div>
+              <Label>Pool count</Label>
+              <input
+                type="number"
+                min={1}
+                value={c.pool_count ?? ""}
+                placeholder="not set"
+                onChange={(e) =>
+                  update(i, { pool_count: e.target.value === "" ? null : Number(e.target.value) })
+                }
+                className="w-full rounded-lg border border-zinc-800 bg-zinc-900 px-2 py-2 text-sm text-white"
+              />
+            </div>
+            <div>
+              <Label>Advance per pool</Label>
+              <input
+                type="number"
+                min={1}
+                value={c.advance_per_pool ?? ""}
+                placeholder={
+                  formats.find((f) => f.id === c.format_id)?.pool_play_advance_per_pool
+                    ? `default ${formats.find((f) => f.id === c.format_id)?.pool_play_advance_per_pool}`
+                    : "not set"
+                }
+                onChange={(e) =>
+                  update(i, { advance_per_pool: e.target.value === "" ? null : Number(e.target.value) })
+                }
+                className="w-full rounded-lg border border-zinc-800 bg-zinc-900 px-2 py-2 text-sm text-white"
+              />
+            </div>
+            <div className="sm:col-span-1">
+              <Label>Bracket math</Label>
+              <BracketMathPreview category={c} format={formats.find((f) => f.id === c.format_id)} />
             </div>
           </div>
           <div className="mt-3 flex justify-end">
@@ -781,6 +821,61 @@ function PaymentEditor({
         textarea
         rows={4}
       />
+    </div>
+  );
+}
+
+/** Shows a tiny preview of how many teams advance from pools to the first
+ *  elimination round, and how many wildcards are needed to fill it. */
+function BracketMathPreview({
+  category,
+  format,
+}: {
+  category: CategoryDraft;
+  format: TournamentFormat | undefined;
+}) {
+  if (!format) {
+    return (
+      <div className="flex h-[38px] items-center rounded-lg border border-zinc-800 bg-zinc-950 px-2 text-xs text-zinc-500">
+        Pick a format
+      </div>
+    );
+  }
+  const elimSlots = format.has_quarterfinals ? 8 : format.has_semifinals ? 4 : format.has_finals ? 2 : 0;
+  const elimLabel = format.has_quarterfinals ? "QF" : format.has_semifinals ? "SF" : format.has_finals ? "F" : "—";
+  if (elimSlots === 0) {
+    return (
+      <div className="flex h-[38px] items-center rounded-lg border border-zinc-800 bg-zinc-950 px-2 text-xs text-zinc-500">
+        No elim stages
+      </div>
+    );
+  }
+  if (category.pool_count == null) {
+    return (
+      <div className="flex h-[38px] items-center rounded-lg border border-zinc-800 bg-zinc-950 px-2 text-xs text-zinc-500">
+        Set pool count
+      </div>
+    );
+  }
+  const advancePerPool = category.advance_per_pool ?? format.pool_play_advance_per_pool;
+  const guaranteed = category.pool_count * advancePerPool;
+  const wildcards = elimSlots - guaranteed;
+  const overflow = wildcards < 0;
+  return (
+    <div
+      className={`flex h-[38px] items-center rounded-lg border px-2 text-xs ${
+        overflow
+          ? "border-red-900 bg-red-950/30 text-red-300"
+          : wildcards === 0
+            ? "border-emerald-900 bg-emerald-950/30 text-emerald-300"
+            : "border-amber-900 bg-amber-950/20 text-amber-200"
+      }`}
+    >
+      {overflow
+        ? `Too many guaranteed (${guaranteed}) for ${elimLabel} (${elimSlots})`
+        : wildcards === 0
+          ? `${guaranteed} → ${elimLabel} (clean)`
+          : `${guaranteed} + ${wildcards} wildcard${wildcards === 1 ? "" : "s"} → ${elimLabel}`}
     </div>
   );
 }

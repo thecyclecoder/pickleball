@@ -91,6 +91,8 @@ export type TournamentCategory = {
   team_limit: number;
   sort_order: number;
   format_id: string | null;
+  pool_count: number | null;
+  advance_per_pool: number | null;
   created_at: string;
 };
 

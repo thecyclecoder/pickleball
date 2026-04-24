@@ -40,8 +40,21 @@ export async function PATCH(
 
   const body = await req.json().catch(() => ({}));
   const updates: Record<string, unknown> = {};
-  for (const key of ["type", "rating", "label", "label_es", "team_limit", "sort_order", "format_id"]) {
-    if (key in body) updates[key] = body[key];
+  for (const key of [
+    "type",
+    "rating",
+    "label",
+    "label_es",
+    "team_limit",
+    "sort_order",
+    "format_id",
+    "pool_count",
+    "advance_per_pool",
+  ]) {
+    if (key in body) {
+      const v = body[key];
+      updates[key] = v === "" ? null : v;
+    }
   }
   if ("label" in updates && typeof updates.label === "string") {
     updates.label = (updates.label as string).trim() || null;
