@@ -4,13 +4,13 @@ import { useEffect, useState } from "react";
 import { largestSrc, srcSetAttr, type TournamentImage } from "@/lib/types";
 
 const AUTO_ADVANCE_MS = 5000;
+const SIZES = "(min-width: 1024px) 420px, (min-width: 768px) 50vw, 100vw";
 
 export function ImageCarousel({ images, alt }: { images: TournamentImage[]; alt: string }) {
   const [index, setIndex] = useState(0);
   const [paused, setPaused] = useState(false);
   const hasMultiple = images.length > 1;
 
-  // Auto-advance every 5s. Pauses on hover/focus.
   useEffect(() => {
     if (!hasMultiple || paused) return;
     const id = setInterval(() => {
@@ -33,37 +33,56 @@ export function ImageCarousel({ images, alt }: { images: TournamentImage[]; alt:
       onFocus={() => setPaused(true)}
       onBlur={() => setPaused(false)}
     >
-      <div
-        className="relative overflow-hidden bg-zinc-900 sm:rounded-2xl"
-        style={{ aspectRatio: "9 / 16" }}
-      >
-        {images.map((img, i) => (
-          <picture key={i}>
-            <source
-              type="image/webp"
-              srcSet={srcSetAttr(img)}
-              sizes="(min-width: 1024px) 420px, (min-width: 768px) 50vw, 100vw"
-            />
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={largestSrc(img)}
-              srcSet={srcSetAttr(img)}
-              sizes="(min-width: 1024px) 420px, (min-width: 768px) 50vw, 100vw"
-              alt={`${alt} — ${i + 1}`}
-              loading={i === 0 ? "eager" : "lazy"}
-              decoding="async"
-              draggable={false}
-              aria-hidden={i !== index}
-              className={`absolute inset-0 h-full w-full object-contain transition-opacity duration-700 ease-in-out ${
-                i === index ? "opacity-100" : "opacity-0"
-              }`}
-            />
-          </picture>
-        ))}
+      <div className="relative overflow-hidden bg-zinc-900 sm:rounded-2xl">
+        {/* First image is in normal flow — it sizes the container to its
+            natural aspect ratio. Subsequent images overlay absolutely and
+            fill the same box for a cross-fade. */}
+        {images.map((img, i) => {
+          const isFirst = i === 0;
+          const visible = i === index;
+          const common = `transition-opacity duration-700 ease-in-out ${
+            visible ? "opacity-100" : "opacity-0"
+          }`;
+          if (isFirst) {
+            return (
+              <picture key={i}>
+                <source type="image/webp" srcSet={srcSetAttr(img)} sizes={SIZES} />
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={largestSrc(img)}
+                  srcSet={srcSetAttr(img)}
+                  sizes={SIZES}
+                  alt={`${alt} — 1`}
+                  loading="eager"
+                  decoding="async"
+                  draggable={false}
+                  aria-hidden={!visible}
+                  className={`block h-auto w-full ${common}`}
+                />
+              </picture>
+            );
+          }
+          return (
+            <picture key={i} className="absolute inset-0">
+              <source type="image/webp" srcSet={srcSetAttr(img)} sizes={SIZES} />
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={largestSrc(img)}
+                srcSet={srcSetAttr(img)}
+                sizes={SIZES}
+                alt={`${alt} — ${i + 1}`}
+                loading="lazy"
+                decoding="async"
+                draggable={false}
+                aria-hidden={!visible}
+                className={`absolute inset-0 h-full w-full object-cover ${common}`}
+              />
+            </picture>
+          );
+        })}
 
         {hasMultiple && (
           <>
-            {/* Pagination dots */}
             <div className="pointer-events-none absolute bottom-3 left-0 right-0 flex justify-center gap-1.5">
               {images.map((_, i) => (
                 <span
