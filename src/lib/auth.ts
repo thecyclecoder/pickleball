@@ -6,6 +6,17 @@ import type { WorkspaceMember } from "./types";
 
 export const ACTIVE_WORKSPACE_COOKIE = "active_workspace_id";
 
+/** True when the current user is the site-wide super-admin (owner of the
+ *  whole system, can create workspaces for others). All other users —
+ *  including workspace owners/admins — can belong to and switch between
+ *  workspaces but cannot create new ones. Set via SUPER_ADMIN_EMAIL. */
+export function isSuperAdmin(user: User | null): boolean {
+  if (!user?.email) return false;
+  const allowed = (process.env.SUPER_ADMIN_EMAIL ?? "").toLowerCase().trim();
+  if (!allowed) return false;
+  return user.email.toLowerCase() === allowed;
+}
+
 export type MembershipResult =
   | { status: "anon" }
   | { status: "denied"; user: User }
@@ -72,13 +83,11 @@ export async function getCurrentMembership(): Promise<MembershipResult> {
   const active =
     memberships.find((m) => m.workspace_id === activeId) ?? memberships[0];
 
-  const canCreateWorkspace = memberships.some((m) => m.role === "owner");
-
   return {
     status: "ok",
     user,
     member: active,
     allMemberships: memberships,
-    canCreateWorkspace,
+    canCreateWorkspace: isSuperAdmin(user),
   };
 }

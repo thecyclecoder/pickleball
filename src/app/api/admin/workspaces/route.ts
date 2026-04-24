@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { ACTIVE_WORKSPACE_COOKIE, getCurrentMembership } from "@/lib/auth";
+import { ACTIVE_WORKSPACE_COOKIE, getCurrentMembership, isSuperAdmin } from "@/lib/auth";
 
 export async function GET() {
   const res = await getCurrentMembership();
@@ -24,9 +24,9 @@ export async function POST(req: Request) {
   if (res.status !== "ok") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
-  if (!res.canCreateWorkspace) {
+  if (!isSuperAdmin(res.user)) {
     return NextResponse.json(
-      { error: "Only workspace owners can create new workspaces." },
+      { error: "Only the site super-admin can create workspaces." },
       { status: 403 }
     );
   }
