@@ -2,7 +2,7 @@ import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth";
 import { getLocale, t } from "@/lib/i18n";
 import { LanguageSwitcher } from "./language-switcher";
-import { Logo } from "./logo";
+import { HomeLink } from "./home-link";
 
 export async function PublicHeader({ active }: { active?: "tournaments" | "me" | null }) {
   const locale = await getLocale();
@@ -11,9 +11,7 @@ export async function PublicHeader({ active }: { active?: "tournaments" | "me" |
   return (
     <header className="border-b border-zinc-900">
       <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-4 sm:px-6 sm:py-5">
-        <Link href="/" aria-label="Buen Tiro" className="text-white">
-          <Logo height={28} />
-        </Link>
+        <HomeLink height={28} />
         <nav className="flex items-center gap-3 text-sm text-zinc-400 sm:gap-5">
           <Link
             href="/tournaments"
