@@ -12,7 +12,12 @@ function resend(): Resend {
 
 /** Generate a passwordless "magic link" for this email that, when clicked,
  *  signs the user in and redirects to `redirectPath`. Creates the auth user
- *  on first click if they don't exist. */
+ *  on first click if they don't exist.
+ *
+ *  The raw Supabase verify URL is wrapped in our own /auth/confirm page
+ *  because single-use tokens get consumed by email link scanners (Gmail,
+ *  Outlook, Proofpoint, etc.) before the human ever clicks. The wrapper
+ *  requires an explicit button click, which scanners don't do. */
 export async function generateMagicLink(email: string, redirectPath: string): Promise<string> {
   const admin = createAdminClient();
   const redirectTo = `${SITE_URL}${redirectPath}`;
@@ -22,9 +27,13 @@ export async function generateMagicLink(email: string, redirectPath: string): Pr
     options: { redirectTo },
   });
   if (error) throw new Error(`generateLink: ${error.message}`);
-  const link = data?.properties?.action_link;
-  if (!link) throw new Error("generateLink: no action_link returned");
-  return link;
+  const verifyUrl = data?.properties?.action_link;
+  if (!verifyUrl) throw new Error("generateLink: no action_link returned");
+
+  // Wrap in our own confirm page. The verify URL is base64url-encoded so
+  // it's opaque to scanners that follow hrefs.
+  const encoded = Buffer.from(verifyUrl, "utf8").toString("base64url");
+  return `${SITE_URL}/auth/confirm?v=${encoded}`;
 }
 
 type RegistrationEmailArgs = {
