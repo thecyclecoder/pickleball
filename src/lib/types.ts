@@ -154,6 +154,7 @@ export type Player = {
   rating: number;
   is_captain: boolean;
   confirmed_at: string | null;
+  paid_at: string | null;
   created_at: string;
 };
 

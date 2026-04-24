@@ -118,6 +118,8 @@ export default async function AdminTournamentEditPage({
             team_limit: c.team_limit,
             sort_order: c.sort_order,
             format_id: c.format_id ?? null,
+            pool_count: c.pool_count ?? null,
+            advance_per_pool: c.advance_per_pool ?? null,
           }))}
           formats={formats}
         />
