@@ -1,6 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentMembership } from "@/lib/auth";
 import { SettingsForm } from "./settings-form";
+import { PushToggle } from "./push-toggle";
 import type { Workspace } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -20,7 +21,10 @@ export default async function AdminSettingsPage() {
   return (
     <div>
       <h1 className="mb-6 text-2xl font-bold tracking-tight text-white">Settings</h1>
-      <SettingsForm workspace={workspace} canEdit={res.member.role !== "member"} />
+      <div className="space-y-6">
+        <SettingsForm workspace={workspace} canEdit={res.member.role !== "member"} />
+        <PushToggle />
+      </div>
     </div>
   );
 }

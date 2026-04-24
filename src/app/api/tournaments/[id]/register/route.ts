@@ -5,6 +5,7 @@ import { RATING_OPTIONS } from "@/lib/types";
 import { categoryLabel } from "@/lib/categories";
 import { formatTournamentDate, formatTime } from "@/lib/format";
 import { generateMagicLink, sendRegistrationEmail } from "@/lib/email";
+import { sendPushToUsers } from "@/lib/push-server";
 
 type PlayerInput = {
   first_name?: string;
@@ -146,16 +147,16 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     return NextResponse.json({ error: playersErr.message }, { status: 500 });
   }
 
-  // Fire off two confirmation emails. Don't block the response on a slow SMTP —
-  // we await in a best-effort try/catch so errors are logged but the client
-  // still gets redirected to the splash.
-  await sendRegistrationEmails({
-    tournament,
-    category: cat,
-    team,
-    p1,
-    p2,
-  }).catch((e) => console.error("Registration emails failed:", e));
+  // Best-effort side effects — both emails and admin pushes. Logged on
+  // failure but never block the client's redirect to the splash.
+  await Promise.all([
+    sendRegistrationEmails({ tournament, category: cat, team, p1, p2 }).catch((e) =>
+      console.error("Registration emails failed:", e)
+    ),
+    notifyWorkspaceAdmins({ tournament, category: cat, p1, p2, waitlisted: status === "waitlisted" }).catch(
+      (e) => console.error("Registration push failed:", e)
+    ),
+  ]);
 
   return NextResponse.json({ team_id: team.id, status });
 }
@@ -234,4 +235,40 @@ async function sendRegistrationEmails(args: {
       submitterFirstName: p1.first_name,
     }),
   ]);
+}
+
+async function notifyWorkspaceAdmins(args: {
+  tournament: { id: string; slug: string; title: string; workspace_id: string };
+  category: { type: "MD" | "WD" | "MXD"; rating: string; label: string | null };
+  p1: { first_name: string; last_name: string };
+  p2: { first_name: string; last_name: string };
+  waitlisted: boolean;
+}) {
+  const admin = createAdminClient();
+  const { data: members } = await admin
+    .from("workspace_members")
+    .select("user_id")
+    .eq("workspace_id", args.tournament.workspace_id)
+    .in("role", ["owner", "admin"])
+    .not("user_id", "is", null);
+
+  const userIds = (members ?? [])
+    .map((m) => m.user_id as string | null)
+    .filter((v): v is string => !!v);
+  if (userIds.length === 0) return;
+
+  const catLabel = categoryLabel({
+    type: args.category.type,
+    rating: args.category.rating,
+    label: args.category.label ?? null,
+  });
+
+  await sendPushToUsers(userIds, {
+    title: args.waitlisted
+      ? `Waitlist: ${args.tournament.title}`
+      : `New team: ${args.tournament.title}`,
+    body: `${args.p1.first_name} ${args.p1.last_name} / ${args.p2.first_name} ${args.p2.last_name} — ${catLabel}`,
+    tag: `registration:${args.tournament.id}`,
+    url: `/admin/tournaments/${args.tournament.id}`,
+  });
 }
