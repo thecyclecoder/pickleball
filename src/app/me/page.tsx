@@ -6,7 +6,6 @@ import { formatTournamentDate, formatTime } from "@/lib/format";
 import { categoryLabelI18n, getLocale, pick, t } from "@/lib/i18n";
 import { PublicHeader } from "@/components/public-header";
 import { PublicFooter } from "@/components/public-footer";
-import { SignOutButton } from "../admin/sign-out-button";
 import type { CategoryType, TeamStatus, PaymentStatus } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -95,14 +94,11 @@ export default async function MePage() {
       <PublicHeader />
 
       <main className="mx-auto w-full max-w-4xl flex-1 px-4 py-6 sm:px-6 sm:py-10">
-        <div className="mb-8 flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">
-              {displayName}
-            </h1>
-            <p className="text-sm text-zinc-400">{user.email}</p>
-          </div>
-          <SignOutButton />
+        <div className="mb-8">
+          <h1 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">
+            {displayName}
+          </h1>
+          <p className="text-sm text-zinc-400">{user.email}</p>
         </div>
 
         <Section title="Upcoming tournaments" rows={upcoming} locale={locale} dict={d} empty="You haven't registered for any upcoming tournaments yet." />
