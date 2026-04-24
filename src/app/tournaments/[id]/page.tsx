@@ -201,8 +201,8 @@ export default async function TournamentDetailPage({
         </Link>
 
         <div className="lg:grid lg:grid-cols-[minmax(0,420px)_minmax(0,1fr)] lg:gap-10">
-          {/* Left: carousel. Stacks on mobile; sticky on desktop. */}
-          <div className="mb-6 lg:sticky lg:top-6 lg:mb-0 lg:self-start">
+          {/* Left: carousel. Full-bleed on mobile; sticky on desktop. */}
+          <div className="mb-6 -mx-4 sm:mx-0 sm:-mx-6 lg:sticky lg:top-6 lg:mx-0 lg:mb-0 lg:self-start">
             <ImageCarousel images={images} alt={title} />
           </div>
 

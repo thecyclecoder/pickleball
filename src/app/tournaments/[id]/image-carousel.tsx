@@ -34,7 +34,7 @@ export function ImageCarousel({ images, alt }: { images: TournamentImage[]; alt:
       onBlur={() => setPaused(false)}
     >
       <div
-        className="relative overflow-hidden rounded-2xl bg-zinc-900"
+        className="relative overflow-hidden bg-zinc-900 sm:rounded-2xl"
         style={{ aspectRatio: "9 / 16", maxHeight: "min(80vh, 720px)" }}
       >
         {images.map((img, i) => (
@@ -100,7 +100,7 @@ export function ImageCarousel({ images, alt }: { images: TournamentImage[]; alt:
       </div>
 
       {hasMultiple && (
-        <div className="no-scrollbar mt-3 flex gap-2 overflow-x-auto pb-1">
+        <div className="no-scrollbar mt-3 flex gap-2 overflow-x-auto px-4 pb-1 sm:px-6 lg:px-0">
           {images.map((img, i) => (
             <button
               key={i}
