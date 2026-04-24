@@ -400,7 +400,9 @@ export default async function TournamentDetailPage({
                         <li key={team.id} className="flex items-center justify-between gap-2 px-4 py-3 text-sm">
                           <div className="min-w-0 truncate">
                             <span className="mr-2 text-xs text-zinc-500">#{idx + 1}</span>
-                            {pls.map((p) => `${p.first_name} ${p.last_name}`).join(" / ") || "Team"}
+                            {pls
+                              .map((p) => `${p.first_name} ${p.last_name} (${Number(p.rating).toFixed(1)})`)
+                              .join(" / ") || "Team"}
                           </div>
                           <span
                             className={`text-xs ${
