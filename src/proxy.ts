@@ -1,9 +1,17 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-const PUBLIC_ROUTES = ["/login", "/auth/callback", "/tournaments", "/api/tournaments", "/"];
+const PUBLIC_ROUTES = [
+  "/login",
+  "/auth/callback",
+  "/tournaments",
+  "/api/tournaments",
+  "/api/locale",
+  "/invite",
+  "/",
+];
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Allow public routes
@@ -12,7 +20,7 @@ export async function middleware(request: NextRequest) {
   }
 
   // Auth-gated routes (/admin/*)
-  let response = NextResponse.next({ request });
+  const response = NextResponse.next({ request });
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -36,7 +44,6 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // Not logged in — redirect to login
   if (!user && pathname.startsWith("/admin")) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";

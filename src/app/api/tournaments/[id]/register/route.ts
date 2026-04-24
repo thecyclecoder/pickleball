@@ -1,0 +1,130 @@
+import { NextResponse } from "next/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { RATING_OPTIONS } from "@/lib/types";
+
+type PlayerInput = {
+  first_name?: string;
+  last_name?: string;
+  email?: string;
+  rating?: string | number;
+};
+
+type Body = {
+  category_id?: string;
+  player1?: PlayerInput;
+  player2?: PlayerInput;
+};
+
+function sanitizePlayer(p: PlayerInput | undefined, who: "Player 1" | "Player 2") {
+  if (!p) throw new Error(`${who} is required`);
+  const first = (p.first_name ?? "").trim();
+  const last = (p.last_name ?? "").trim();
+  const email = (p.email ?? "").trim().toLowerCase();
+  const rating = String(p.rating ?? "").trim();
+  if (!first) throw new Error(`${who}: first name is required`);
+  if (!last) throw new Error(`${who}: last name is required`);
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error(`${who}: valid email is required`);
+  if (!(RATING_OPTIONS as readonly string[]).includes(rating)) {
+    throw new Error(`${who}: rating must be one of ${RATING_OPTIONS.join(", ")}`);
+  }
+  return { first_name: first, last_name: last, email, rating: Number(rating) };
+}
+
+export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const isUuid = /^[0-9a-f-]{36}$/i.test(id);
+  const admin = createAdminClient();
+
+  const body = (await req.json().catch(() => ({}))) as Body;
+
+  let p1, p2;
+  try {
+    p1 = sanitizePlayer(body.player1, "Player 1");
+    p2 = sanitizePlayer(body.player2, "Player 2");
+  } catch (e) {
+    return NextResponse.json({ error: (e as Error).message }, { status: 400 });
+  }
+  if (p1.email === p2.email) {
+    return NextResponse.json({ error: "Players must have different emails" }, { status: 400 });
+  }
+  if (!body.category_id) {
+    return NextResponse.json({ error: "Category is required" }, { status: 400 });
+  }
+
+  // Look up tournament
+  const tLookup = isUuid
+    ? admin.from("tournaments").select("*").eq("id", id).limit(1)
+    : admin.from("tournaments").select("*").eq("slug", id).limit(1);
+  const { data: tRows, error: tErr } = await tLookup;
+  if (tErr) return NextResponse.json({ error: tErr.message }, { status: 500 });
+  const tournament = tRows?.[0];
+  if (!tournament || tournament.status !== "published") {
+    return NextResponse.json({ error: "Tournament not found" }, { status: 404 });
+  }
+  if (!tournament.registration_open) {
+    return NextResponse.json({ error: "Registration is closed" }, { status: 400 });
+  }
+
+  // Validate category belongs to tournament
+  const { data: cat, error: cErr } = await admin
+    .from("tournament_categories")
+    .select("*")
+    .eq("id", body.category_id)
+    .eq("tournament_id", tournament.id)
+    .limit(1)
+    .single();
+  if (cErr || !cat) return NextResponse.json({ error: "Category not found" }, { status: 404 });
+
+  // Check duplicate email in same category (excluding cancelled teams)
+  const { data: dupTeams } = await admin
+    .from("teams")
+    .select("id, status, players!inner(email)")
+    .eq("category_id", cat.id)
+    .neq("status", "cancelled");
+  const existingEmails = new Set<string>();
+  for (const t of (dupTeams ?? []) as unknown as { players: { email: string }[] }[]) {
+    for (const pl of t.players) existingEmails.add(pl.email.toLowerCase());
+  }
+  if (existingEmails.has(p1.email) || existingEmails.has(p2.email)) {
+    return NextResponse.json(
+      { error: "One of these emails is already registered in this category" },
+      { status: 409 }
+    );
+  }
+
+  // Count active teams in category
+  const { count: activeCount } = await admin
+    .from("teams")
+    .select("id", { count: "exact", head: true })
+    .eq("category_id", cat.id)
+    .neq("status", "cancelled");
+  const status = (activeCount ?? 0) >= cat.team_limit ? "waitlisted" : "registered";
+
+  // Create team
+  const { data: team, error: teamErr } = await admin
+    .from("teams")
+    .insert({
+      tournament_id: tournament.id,
+      category_id: cat.id,
+      workspace_id: tournament.workspace_id,
+      status,
+    })
+    .select()
+    .single();
+  if (teamErr || !team) {
+    return NextResponse.json({ error: teamErr?.message ?? "Failed to create team" }, { status: 500 });
+  }
+
+  // Create players
+  const { error: playersErr } = await admin.from("players").insert([
+    { team_id: team.id, ...p1, is_captain: true },
+    { team_id: team.id, ...p2, is_captain: false },
+  ]);
+  if (playersErr) {
+    // Roll back team
+    await admin.from("teams").delete().eq("id", team.id);
+    return NextResponse.json({ error: playersErr.message }, { status: 500 });
+  }
+
+  return NextResponse.json({ team_id: team.id, status });
+}
