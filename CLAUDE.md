@@ -3,6 +3,7 @@
 ## Project Overview
 A tournament management platform for pickleball. Organizers create tournaments, players register as teams (doubles format). Multi-tenant with workspace scoping.
 
+- **Domain**: https://buentiro.app
 - **GitHub**: https://github.com/thecyclecoder/pickleball
 - **Vercel**: dylan-ralstons-projects/pickleball (Pro plan, Next.js)
 - **Supabase**: project ref `jfpeyuwffumrlkokejha` (Superfoods Company org)
