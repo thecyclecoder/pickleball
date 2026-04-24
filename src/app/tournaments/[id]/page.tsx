@@ -200,22 +200,37 @@ export default async function TournamentDetailPage({
           {d.back_to_list}
         </Link>
 
+        {/* Mobile-only title above the carousel. Desktop repeats the title in
+            the right column (next to the sticky carousel). */}
+        <div className="mb-4 lg:hidden">
+          {tour.workspace?.name && (
+            <p className="mb-1.5 text-xs font-medium uppercase tracking-[0.15em] text-emerald-500">
+              {tour.workspace.name}
+            </p>
+          )}
+          <h1 className="text-2xl font-bold leading-tight tracking-tight text-white">
+            {title}
+          </h1>
+        </div>
+
         <div className="lg:grid lg:grid-cols-[minmax(0,420px)_minmax(0,1fr)] lg:gap-10">
           {/* Left: carousel. Full-bleed on mobile; sticky on desktop. */}
-          <div className="mb-6 -mx-4 sm:mx-0 sm:-mx-6 lg:sticky lg:top-6 lg:mx-0 lg:mb-0 lg:self-start">
+          <div className="mb-6 -mx-4 sm:-mx-6 lg:sticky lg:top-6 lg:mx-0 lg:mb-0 lg:self-start">
             <ImageCarousel images={images} alt={title} />
           </div>
 
           {/* Right: scrollable details + signup */}
           <div className="min-w-0">
-        {tour.workspace?.name && (
-          <p className="mb-2 text-xs font-medium uppercase tracking-[0.15em] text-emerald-500">
-            {tour.workspace.name}
-          </p>
-        )}
-        <h1 className="mb-2 text-2xl font-bold leading-tight tracking-tight text-white sm:text-4xl">
-          {title}
-        </h1>
+        <div className="hidden lg:block">
+          {tour.workspace?.name && (
+            <p className="mb-2 text-xs font-medium uppercase tracking-[0.15em] text-emerald-500">
+              {tour.workspace.name}
+            </p>
+          )}
+          <h1 className="mb-2 text-4xl font-bold leading-tight tracking-tight text-white">
+            {title}
+          </h1>
+        </div>
         {description && (
           <p className="mb-6 text-sm text-zinc-400 sm:text-base">{description}</p>
         )}

@@ -33,33 +33,52 @@ A tournament management platform for pickleball. Organizers create tournaments, 
 
 ### Route Structure
 ```
-/ .......................... Public landing page
-/tournaments ............... Public tournament list
-/tournaments/[id] .......... Public tournament detail + signup form + registered teams
-/login ..................... Google OAuth login
-/auth/callback ............. OAuth callback handler
-/admin ..................... Auth-gated dashboard (tournament management)
-/admin/tournaments ......... Tournament list (CRUD)
-/admin/tournaments/new ..... Create tournament
-/admin/tournaments/[id] .... Edit tournament + view registrations
+/ ............................................. Public landing page
+/tournaments .................................. Public tournament list (all workspaces merged)
+/tournaments/[slug] ........................... Public tournament detail + signup form
+/tournaments/[slug]/registered/[teamId] ....... Post-registration splash + account CTA
+/login ........................................ Sign in (Google OR email+password) — open to anyone
+/signup ....................................... Sign up (Google OR email+password) — open to anyone
+/auth/callback ................................ OAuth callback handler
+/me ........................................... Player dashboard (any signed-in user)
+/invite/[id] .................................. Workspace invite landing page
+/admin ........................................ Workspace-member-gated dashboard
+/admin/tournaments ............................ Tournament list (scoped to active workspace)
+/admin/tournaments/new ........................ Create tournament
+/admin/tournaments/[id] ....................... Edit tournament + view registrations
+/admin/members ................................ Invite + manage workspace members
+/admin/workspaces ............................. List + create workspaces (owners only)
+/admin/settings ............................... Workspace settings (name, etc.)
 ```
 
 ### Auth & Access Control
-- **Public**: `/`, `/tournaments`, `/tournaments/[id]`, `/api/tournaments/*`
-- **Auth-gated**: `/admin/*` — requires Google login
-- **Workspace members only**: On login, check `workspace_members` table. If user is not a member, show "Access Denied" page
-- **Owner**: dylanralston@gmail.com — auto-created as owner on first workspace setup
-- **Invite flow**: Owner invites users by email → row in `workspace_members` → invited user can log in
+Three tiers:
+1. **Public** (anon): landing, `/tournaments*`, `/api/tournaments/*`, `/login`, `/signup`
+2. **Any authenticated user**: `/me` (player dashboard) — just needs to be logged in, no workspace membership required
+3. **Workspace members**: `/admin/*` — requires a row in `workspace_members` for the current active workspace
+
+- **Login is open to anyone**. Google OAuth or email + password (both enabled in Supabase Auth).
+- **Players are global** across the system. Anyone who signs up gets a `/me` dashboard showing their registrations. `players.user_id` links registration rows to auth users by matching email (handled by DB triggers on both `players` insert and `auth.users` insert/update).
+- **Admin area requires workspace membership**. The `/admin` layout checks `workspace_members` and shows an "Access Denied" page for non-members.
+- **Active workspace** lives in the `active_workspace_id` cookie. Users who are members of multiple workspaces see a switcher in the admin header.
+- **Creating workspaces**: any member whose role is `owner` on at least one workspace can create more. Self-signup → new workspace is intentionally NOT allowed yet.
+- **Owner (Dylan)**: dylanralston@gmail.com — seeded as the owner of the initial "Puerto Rico Pickleball" workspace; can create additional workspaces (Cocolias, El Mulo, etc.).
+- **Invite flow** (workspace-scoped): owner/admin invites by email → row in `workspace_members` → generated `/invite/[id]` link shared with invitee → they sign in (Google) → trigger links their user_id to the membership row.
 
 ### Data Model
 ```
-Workspace (multi-tenant root)
-  └── Tournament (event with categories)
+Workspace ........................... (organizing group — e.g. Cocolias, El Mulo)
+  └── Tournament (scoped to workspace)
        └── Category (e.g., "Men's 4.0 Doubles")
             └── Team (pair of players, scoped to category)
-                 ├── Player 1 (first_name, last_name, email, rating)
-                 └── Player 2 (first_name, last_name, email, rating)
+                 ├── Player 1 ........ (first_name, last_name, email, rating, user_id?)
+                 └── Player 2 ........ (first_name, last_name, email, rating, user_id?)
+
+auth.users (Supabase) <---- linked via players.user_id (by email match)
+WorkspaceMember ..................... (workspace_id, email, role) — links user to workspace
 ```
+
+Public pages merge published tournaments from ALL workspaces. Players are NOT scoped to a workspace — a person can play in tournaments run by any workspace.
 
 ### Admin Client Pattern
 All writes go through `createAdminClient()` (service_role), never client-side. Auth verified via `createClient().auth.getUser()` on server.

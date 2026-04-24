@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getCurrentUser } from "@/lib/auth";
 import { RATING_OPTIONS } from "@/lib/types";
 
 type PlayerInput = {
@@ -115,10 +116,28 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     return NextResponse.json({ error: teamErr?.message ?? "Failed to create team" }, { status: 500 });
   }
 
+  // If the submitter is signed in and matches one of the player emails,
+  // link that player directly (the DB trigger also covers the email match).
+  const currentUser = await getCurrentUser();
+  const userId =
+    currentUser && currentUser.email
+      ? currentUser.email.toLowerCase()
+      : null;
+
   // Create players
   const { error: playersErr } = await admin.from("players").insert([
-    { team_id: team.id, ...p1, is_captain: true },
-    { team_id: team.id, ...p2, is_captain: false },
+    {
+      team_id: team.id,
+      ...p1,
+      is_captain: true,
+      user_id: userId && p1.email === userId ? currentUser!.id : null,
+    },
+    {
+      team_id: team.id,
+      ...p2,
+      is_captain: false,
+      user_id: userId && p2.email === userId ? currentUser!.id : null,
+    },
   ]);
   if (playersErr) {
     // Roll back team

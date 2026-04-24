@@ -35,7 +35,7 @@ export function ImageCarousel({ images, alt }: { images: TournamentImage[]; alt:
     >
       <div
         className="relative overflow-hidden bg-zinc-900 sm:rounded-2xl"
-        style={{ aspectRatio: "9 / 16", maxHeight: "min(80vh, 720px)" }}
+        style={{ aspectRatio: "9 / 16" }}
       >
         {images.map((img, i) => (
           <picture key={i}>

@@ -62,7 +62,6 @@ export function RegisterForm({
   const [p2, setP2] = useState<PlayerFields>({ ...emptyPlayer });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<null | { status: "registered" | "waitlisted" }>(null);
 
   const selectedCategory = categories.find((c) => c.id === categoryId);
   const showPayment = Boolean(payment.qr_url || payment.instructions);
@@ -79,35 +78,11 @@ export function RegisterForm({
       });
       const body = await res.json();
       if (!res.ok) throw new Error(body.error || "Registration failed");
-      setSuccess({ status: body.status });
-      setP1({ ...emptyPlayer });
-      setP2({ ...emptyPlayer });
-      router.refresh();
+      router.push(`/tournaments/${tournamentSlug}/registered/${body.team_id}`);
     } catch (e) {
       setError((e as Error).message);
-    } finally {
       setSubmitting(false);
     }
-  }
-
-  if (success) {
-    return (
-      <div className="rounded-xl border border-emerald-700/40 bg-emerald-950/30 p-5 sm:p-6">
-        <h3 className="mb-2 text-lg font-semibold text-emerald-300">
-          {success.status === "waitlisted" ? labels.success_waitlisted_title : labels.success_registered_title}
-        </h3>
-        <p className="mb-4 text-sm text-emerald-100/80">
-          {success.status === "waitlisted" ? labels.success_waitlisted_desc : labels.success_registered_desc}
-        </p>
-        {showPayment && <PaymentPanel payment={payment} />}
-        <button
-          onClick={() => setSuccess(null)}
-          className="mt-4 text-xs text-emerald-400 hover:text-emerald-300"
-        >
-          {labels.register_another}
-        </button>
-      </div>
-    );
   }
 
   return (
