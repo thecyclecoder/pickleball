@@ -1,7 +1,16 @@
 // Buen Tiro service worker — PWA shell + web push.
+//
+// Caching policy: HTML navigations are NEVER handled by the SW, so UI
+// deploys reach users on the next page load. Only icons + manifest are
+// pre-cached (small, stable). Next.js ships content-hashed JS/CSS
+// bundles whose filenames change on every deploy, so browser-level
+// caching handles those automatically.
+//
+// Bump CACHE_NAME when STATIC_ASSETS changes so stale entries get
+// purged on the next activate.
 
-const CACHE_NAME = "buentiro-v1";
-const STATIC_ASSETS = ["/", "/manifest.json", "/icon-192.png", "/icon-512.png"];
+const CACHE_NAME = "buentiro-v2";
+const STATIC_ASSETS = ["/manifest.json", "/icon-192.png", "/icon-512.png"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(STATIC_ASSETS)));
@@ -18,15 +27,23 @@ self.addEventListener("activate", (event) => {
 });
 
 self.addEventListener("fetch", (event) => {
-  const url = new URL(event.request.url);
-  // Never intercept auth, API, or cross-origin requests
+  const { request } = event;
+  const url = new URL(request.url);
+
+  // Never intercept auth, API, admin, login, or cross-origin
   const bypass = ["/auth/", "/api/", "/login", "/admin", "supabase.co"];
   if (bypass.some((p) => url.pathname.includes(p) || url.href.includes(p))) return;
-  if (event.request.method !== "GET") return;
+  if (request.method !== "GET") return;
   if (url.origin !== self.location.origin) return;
 
+  // HTML always goes to the network. No stale pages after a UI deploy.
+  const accept = request.headers.get("accept") || "";
+  if (request.mode === "navigate" || accept.includes("text/html")) return;
+
+  // Cache-first for the handful of pre-cached assets; otherwise go to
+  // the network and fall back to cache only if offline.
   event.respondWith(
-    caches.match(event.request).then((cached) => cached || fetch(event.request).catch(() => cached))
+    caches.match(request).then((cached) => cached || fetch(request).catch(() => cached))
   );
 });
 
