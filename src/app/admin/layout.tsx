@@ -4,7 +4,7 @@ import { getCurrentMembership } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { SignOutButton } from "./sign-out-button";
 import { WorkspaceSwitcher } from "./workspace-switcher";
-import { Logo } from "@/components/logo";
+import { HomeLink } from "@/components/home-link";
 import { AccessDenied } from "./access-denied";
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -30,10 +30,15 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       <header className="border-b border-zinc-900">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-4 sm:px-6">
           <div className="flex items-center gap-4 sm:gap-6">
-            <Link href="/admin" aria-label="Buen Tiro" className="flex items-center gap-2 text-white">
-              <Logo height={24} />
-              <span className="hidden text-xs uppercase tracking-widest text-zinc-500 sm:inline">Admin</span>
-            </Link>
+            <div className="flex items-center gap-2 text-white">
+              <HomeLink height={24} />
+              <Link
+                href="/admin"
+                className="hidden text-xs uppercase tracking-widest text-zinc-500 hover:text-white sm:inline"
+              >
+                Admin
+              </Link>
+            </div>
             <nav className="hidden gap-5 text-sm text-zinc-400 sm:flex">
               <Link href="/admin" className="hover:text-white">Dashboard</Link>
               <Link href="/admin/tournaments" className="hover:text-white">Tournaments</Link>
