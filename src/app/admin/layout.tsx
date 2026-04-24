@@ -37,6 +37,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             <nav className="hidden gap-5 text-sm text-zinc-400 sm:flex">
               <Link href="/admin" className="hover:text-white">Dashboard</Link>
               <Link href="/admin/tournaments" className="hover:text-white">Tournaments</Link>
+              <Link href="/admin/players" className="hover:text-white">Players</Link>
               <Link href="/admin/members" className="hover:text-white">Members</Link>
               <Link href="/admin/workspaces" className="hover:text-white">Workspaces</Link>
               <Link href="/admin/settings" className="hover:text-white">Settings</Link>
@@ -55,6 +56,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         <nav className="flex gap-4 overflow-x-auto border-t border-zinc-900 px-4 py-2 text-xs text-zinc-400 sm:hidden">
           <Link href="/admin">Dashboard</Link>
           <Link href="/admin/tournaments">Tournaments</Link>
+          <Link href="/admin/players">Players</Link>
           <Link href="/admin/members">Members</Link>
           <Link href="/admin/workspaces">Workspaces</Link>
           <Link href="/admin/settings">Settings</Link>

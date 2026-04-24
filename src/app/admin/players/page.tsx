@@ -1,0 +1,141 @@
+import Link from "next/link";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { getCurrentMembership } from "@/lib/auth";
+import { PlayersPanel } from "./players-panel";
+
+export const dynamic = "force-dynamic";
+
+type Raw = {
+  id: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+  rating: number;
+  user_id: string | null;
+  team: {
+    id: string;
+    status: string;
+    registered_at: string;
+    tournament: { id: string; slug: string; title: string };
+  };
+};
+
+export type PlayerAggregate = {
+  email: string;
+  first_name: string;
+  last_name: string;
+  rating: number;
+  has_account: boolean;
+  registration_count: number;
+  last_registered_at: string;
+  tournaments: { id: string; slug: string; title: string; registered_at: string; status: string }[];
+};
+
+export default async function AdminPlayersPage() {
+  const res = await getCurrentMembership();
+  if (res.status !== "ok") return null;
+
+  const admin = createAdminClient();
+  const { data: teamRows } = await admin
+    .from("teams")
+    .select("id")
+    .eq("workspace_id", res.member.workspace_id);
+  const teamIds = (teamRows ?? []).map((t) => t.id);
+
+  let aggregates: PlayerAggregate[] = [];
+  if (teamIds.length > 0) {
+    const { data: players } = await admin
+      .from("players")
+      .select(
+        `id, first_name, last_name, email, rating, user_id,
+         team:teams!inner (
+           id, status, registered_at,
+           tournament:tournaments!inner (id, slug, title)
+         )`
+      )
+      .in("team_id", teamIds)
+      .order("registered_at", { ascending: false, referencedTable: "teams" });
+
+    const rows = (players ?? []) as unknown as Raw[];
+
+    // Aggregate by lowercased email
+    const byEmail = new Map<string, PlayerAggregate>();
+    for (const r of rows) {
+      const key = r.email.toLowerCase();
+      const entry = byEmail.get(key);
+      const tour = r.team.tournament;
+      const tourEntry = {
+        id: tour.id,
+        slug: tour.slug,
+        title: tour.title,
+        registered_at: r.team.registered_at,
+        status: r.team.status,
+      };
+      if (!entry) {
+        byEmail.set(key, {
+          email: key,
+          first_name: r.first_name,
+          last_name: r.last_name,
+          rating: Number(r.rating),
+          has_account: !!r.user_id,
+          registration_count: 1,
+          last_registered_at: r.team.registered_at,
+          tournaments: [tourEntry],
+        });
+      } else {
+        entry.registration_count += 1;
+        entry.tournaments.push(tourEntry);
+        if (r.user_id) entry.has_account = true;
+        if (r.team.registered_at > entry.last_registered_at) {
+          entry.last_registered_at = r.team.registered_at;
+          entry.first_name = r.first_name;
+          entry.last_name = r.last_name;
+          entry.rating = Number(r.rating);
+        }
+      }
+    }
+    aggregates = Array.from(byEmail.values()).sort(
+      (a, b) => b.last_registered_at.localeCompare(a.last_registered_at)
+    );
+  }
+
+  const withAccount = aggregates.filter((p) => p.has_account).length;
+  const pending = aggregates.length - withAccount;
+
+  return (
+    <div>
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-white">Players</h1>
+          <p className="text-sm text-zinc-400">
+            Everyone who has registered for a tournament in this workspace. Players become{" "}
+            <strong className="text-emerald-400">confirmed</strong> users when they click the magic
+            link in their confirmation email (or sign in with Google using that email).
+          </p>
+        </div>
+        <div className="flex gap-2 text-xs">
+          <span className="rounded-md border border-emerald-800 bg-emerald-950/40 px-2 py-1 text-emerald-300">
+            {withAccount} confirmed
+          </span>
+          <span className="rounded-md border border-zinc-700 bg-zinc-900 px-2 py-1 text-zinc-400">
+            {pending} pending
+          </span>
+        </div>
+      </div>
+
+      {aggregates.length === 0 ? (
+        <div className="rounded-xl border border-dashed border-zinc-800 bg-zinc-900/40 p-10 text-center">
+          <p className="mb-3 text-sm text-zinc-400">No players have registered yet.</p>
+          <Link
+            href="/admin/tournaments"
+            className="text-sm text-emerald-400 hover:text-emerald-300"
+          >
+            Go to tournaments →
+          </Link>
+        </div>
+      ) : (
+        <PlayersPanel players={aggregates} />
+      )}
+    </div>
+  );
+}
