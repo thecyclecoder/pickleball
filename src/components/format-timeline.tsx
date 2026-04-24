@@ -23,34 +23,34 @@ export function FormatTimeline({
 }) {
   const advance = advancePerPool ?? format.pool_play_advance_per_pool;
   const L = locale === "es"
-    ? { pool: "Round robin", qf: "Cuartos", sf: "Semifinales", f: "Final", topPer: (n: number) => `Top ${n} por grupo` }
-    : { pool: "Pool play", qf: "Quarterfinals", sf: "Semifinals", f: "Finals", topPer: (n: number) => `Top ${n} per pool` };
+    ? { pool: "Fase de grupos", qf: "Cuartos de final", sf: "Semifinales", f: "Final", topPer: (n: number) => `Top ${n} por grupo avanza${n === 1 ? "" : "n"}` }
+    : { pool: "Pool play", qf: "Quarterfinals", sf: "Semifinals", f: "Finals", topPer: (n: number) => `Top ${n} per pool advance${n === 1 ? "s" : ""}` };
 
   const stages: Stage[] = [];
   stages.push({
     name: L.pool,
-    rule: stageRulesText(format.pool_play_games_to, format.pool_play_win_by, format.pool_play_best_of),
+    rule: stageRulesText(format.pool_play_games_to, format.pool_play_win_by, format.pool_play_best_of, locale),
     detail: L.topPer(advance),
     tone: "pool",
   });
   if (format.has_quarterfinals) {
     stages.push({
       name: L.qf,
-      rule: stageRulesText(format.quarterfinals_games_to, format.quarterfinals_win_by, format.quarterfinals_best_of),
+      rule: stageRulesText(format.quarterfinals_games_to, format.quarterfinals_win_by, format.quarterfinals_best_of, locale),
       tone: "mid",
     });
   }
   if (format.has_semifinals) {
     stages.push({
       name: L.sf,
-      rule: stageRulesText(format.semifinals_games_to, format.semifinals_win_by, format.semifinals_best_of),
+      rule: stageRulesText(format.semifinals_games_to, format.semifinals_win_by, format.semifinals_best_of, locale),
       tone: "mid",
     });
   }
   if (format.has_finals) {
     stages.push({
       name: L.f,
-      rule: stageRulesText(format.finals_games_to, format.finals_win_by, format.finals_best_of),
+      rule: stageRulesText(format.finals_games_to, format.finals_win_by, format.finals_best_of, locale),
       tone: "final",
     });
   }

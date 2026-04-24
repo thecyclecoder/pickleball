@@ -122,13 +122,21 @@ export type TournamentFormat = {
 };
 
 /** Human-friendly description of a single stage's rules, e.g.
- *  "Best of 3, games to 11, win by 2". */
+ *  "Best of 3, games to 11, win by 2" / "Al mejor de 3, juegos a 11, ganar por 2". */
 export function stageRulesText(
   gamesTo: number | null,
   winBy: number | null,
-  bestOf: number | null
+  bestOf: number | null,
+  locale: "en" | "es" = "en"
 ): string {
   if (!gamesTo || !winBy || !bestOf) return "—";
+  if (locale === "es") {
+    const gamesPart =
+      bestOf > 1
+        ? `Al mejor de ${bestOf}, juegos a ${gamesTo}`
+        : `1 juego a ${gamesTo}`;
+    return winBy > 1 ? `${gamesPart}, ganar por ${winBy}` : gamesPart;
+  }
   const gamesPart = bestOf > 1 ? `Best of ${bestOf}, games to ${gamesTo}` : `1 game to ${gamesTo}`;
   return winBy > 1 ? `${gamesPart}, win by ${winBy}` : gamesPart;
 }
