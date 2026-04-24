@@ -19,7 +19,6 @@ export async function PublicHeader({ active }: { active?: "tournaments" | null }
           >
             {d.nav_tournaments}
           </Link>
-          <Link href="/login" className="hover:text-white">{d.nav_admin}</Link>
           <LanguageSwitcher current={locale} />
         </nav>
       </div>

@@ -16,6 +16,9 @@ export function pick<T extends string | null | undefined>(en: T, es: T, locale: 
   return en;
 }
 
+// All dict entries are plain strings so the dict can be serialized across
+// the server/client boundary (React forbids passing functions to client
+// components). Dynamic strings live in exported helper functions below.
 const UI = {
   en: {
     siteName: "Buen Tiro",
@@ -31,7 +34,6 @@ const UI = {
     page_tournaments_desc: "Upcoming pickleball tournaments in Puerto Rico.",
     no_tournaments: "No tournaments listed yet. Check back soon.",
     no_flyer: "No flyer",
-    spots_open: (n: number) => `${n} team spot${n === 1 ? "" : "s"} open`,
     waitlist_only: "Waitlist only",
     registration_closed: "Registration closed",
     back_to_list: "← All tournaments",
@@ -43,7 +45,6 @@ const UI = {
     directions: "Get directions →",
     section_details: "Details",
     section_categories: "Categories",
-    teams_of: (a: number, b: number) => `${a} / ${b} teams`,
     waitlist_suffix: "· waitlist",
     no_categories: "No categories yet.",
     section_register: "Register your team",
@@ -51,7 +52,6 @@ const UI = {
     no_teams_yet: "No teams registered yet.",
     form_category: "Category",
     form_waitlist_only: "— waitlist only",
-    form_spots_left: (n: number) => `(${n} spot${n === 1 ? "" : "s"} left)`,
     form_player1: "Player 1 (Captain)",
     form_player2: "Player 2",
     form_first_name: "First name",
@@ -85,7 +85,6 @@ const UI = {
     page_tournaments_desc: "Próximos torneos de pickleball en Puerto Rico.",
     no_tournaments: "Aún no hay torneos publicados. Vuelve pronto.",
     no_flyer: "Sin flyer",
-    spots_open: (n: number) => `${n} espacio${n === 1 ? "" : "s"} disponible${n === 1 ? "" : "s"}`,
     waitlist_only: "Solo lista de espera",
     registration_closed: "Inscripción cerrada",
     back_to_list: "← Todos los torneos",
@@ -97,7 +96,6 @@ const UI = {
     directions: "Cómo llegar →",
     section_details: "Detalles",
     section_categories: "Categorías",
-    teams_of: (a: number, b: number) => `${a} / ${b} equipos`,
     waitlist_suffix: "· lista de espera",
     no_categories: "Aún no hay categorías.",
     section_register: "Inscribe tu equipo",
@@ -105,7 +103,6 @@ const UI = {
     no_teams_yet: "Aún no hay equipos inscritos.",
     form_category: "Categoría",
     form_waitlist_only: "— solo lista de espera",
-    form_spots_left: (n: number) => `(${n} espacio${n === 1 ? "" : "s"} disponible${n === 1 ? "" : "s"})`,
     form_player1: "Jugador 1 (Capitán)",
     form_player2: "Jugador 2",
     form_first_name: "Nombre",
@@ -132,6 +129,25 @@ export type Dict = (typeof UI)[Locale];
 
 export function t(locale: Locale): Dict {
   return UI[locale];
+}
+
+// Dynamic string formatters — safe to call from both server and client code.
+export function formatSpotsOpen(locale: Locale, n: number): string {
+  if (locale === "es") {
+    return `${n} espacio${n === 1 ? "" : "s"} disponible${n === 1 ? "" : "s"}`;
+  }
+  return `${n} team spot${n === 1 ? "" : "s"} open`;
+}
+
+export function formatTeamsOf(locale: Locale, a: number, b: number): string {
+  return locale === "es" ? `${a} / ${b} equipos` : `${a} / ${b} teams`;
+}
+
+export function formatSpotsLeft(locale: Locale, n: number): string {
+  if (locale === "es") {
+    return `(${n} espacio${n === 1 ? "" : "s"} disponible${n === 1 ? "" : "s"})`;
+  }
+  return `(${n} spot${n === 1 ? "" : "s"} left)`;
 }
 
 const CATEGORY_TYPE_ES: Record<"MD" | "WD" | "MXD", string> = {

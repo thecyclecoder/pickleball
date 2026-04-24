@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { formatTournamentDate } from "@/lib/format";
 import { getLocale, pick, t } from "@/lib/i18n";
 import { PublicHeader } from "@/components/public-header";
+import { PublicFooter } from "@/components/public-footer";
 import { ResponsiveImage } from "@/components/responsive-image";
 import type { TournamentImage } from "@/lib/types";
 
@@ -97,11 +98,7 @@ export default async function Home() {
         </section>
       )}
 
-      <footer className="border-t border-zinc-900">
-        <div className="mx-auto max-w-5xl px-6 py-6 text-xs text-zinc-600">
-          © {new Date().getFullYear()} {d.footer}
-        </div>
-      </footer>
+      <PublicFooter />
     </div>
   );
 }

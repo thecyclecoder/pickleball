@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { formatTournamentDate, formatTime } from "@/lib/format";
-import { categoryLabelI18n, getLocale, pick, t } from "@/lib/i18n";
+import { categoryLabelI18n, formatSpotsOpen, getLocale, pick, t } from "@/lib/i18n";
 import { PublicHeader } from "@/components/public-header";
+import { PublicFooter } from "@/components/public-footer";
 import { ResponsiveImage } from "@/components/responsive-image";
 import type { CategoryType, Team, TournamentImage } from "@/lib/types";
 
@@ -54,7 +55,7 @@ export default async function TournamentsPage() {
   const tournaments = (data ?? []) as Row[];
 
   return (
-    <div className="min-h-screen bg-zinc-950">
+    <div className="flex min-h-screen flex-col bg-zinc-950">
       <PublicHeader active="tournaments" />
 
       <main className="mx-auto max-w-5xl px-6 py-10">
@@ -125,7 +126,7 @@ export default async function TournamentsPage() {
                     <p className="text-xs text-zinc-500">
                       {tt.registration_open ? (
                         spotsOpen > 0 ? (
-                          <span className="text-emerald-500">{d.spots_open(spotsOpen)}</span>
+                          <span className="text-emerald-500">{formatSpotsOpen(locale, spotsOpen)}</span>
                         ) : (
                           <span className="text-amber-500">{d.waitlist_only}</span>
                         )
@@ -140,6 +141,7 @@ export default async function TournamentsPage() {
           </div>
         )}
       </main>
+      <PublicFooter />
     </div>
   );
 }

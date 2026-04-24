@@ -2,8 +2,16 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { formatTournamentDate, formatTime } from "@/lib/format";
-import { categoryLabelI18n, getLocale, pick, t } from "@/lib/i18n";
+import {
+  categoryLabelI18n,
+  formatSpotsLeft,
+  formatTeamsOf,
+  getLocale,
+  pick,
+  t,
+} from "@/lib/i18n";
 import { PublicHeader } from "@/components/public-header";
+import { PublicFooter } from "@/components/public-footer";
 import { ImageCarousel } from "./image-carousel";
 import type { Tournament, TournamentCategory, Team, Player, Workspace } from "@/lib/types";
 import { RegisterForm } from "./register-form";
@@ -84,7 +92,7 @@ export default async function TournamentDetailPage({
       : [];
 
   return (
-    <div className="min-h-screen bg-zinc-950">
+    <div className="flex min-h-screen flex-col bg-zinc-950">
       <PublicHeader />
 
       <main className="mx-auto max-w-3xl px-4 py-4 sm:px-6 sm:py-8">
@@ -169,7 +177,7 @@ export default async function TournamentDetailPage({
               <li key={c.id} className="flex items-center justify-between gap-3 px-4 py-3 text-sm sm:px-5">
                 <span className="text-white">{c.display}</span>
                 <span className={`whitespace-nowrap text-xs ${c.is_full ? "text-amber-500" : "text-zinc-400"}`}>
-                  {d.teams_of(c.teams.length, c.team_limit)} {c.is_full && d.waitlist_suffix}
+                  {formatTeamsOf(locale, c.teams.length, c.team_limit)} {c.is_full && d.waitlist_suffix}
                 </span>
               </li>
             ))}
@@ -188,7 +196,7 @@ export default async function TournamentDetailPage({
                 id: c.id,
                 label: c.display,
                 is_full: c.is_full,
-                spots_remaining: c.spots_remaining,
+                spots_label: c.is_full ? d.form_waitlist_only : formatSpotsLeft(locale, c.spots_remaining),
               }))}
               payment={{
                 venmo_qr_url: payment.venmo_qr_url,
@@ -196,7 +204,25 @@ export default async function TournamentDetailPage({
                 venmo_handle: payment.venmo_handle,
                 ath_handle: payment.ath_handle,
               }}
-              dict={d}
+              labels={{
+                form_category: d.form_category,
+                form_player1: d.form_player1,
+                form_player2: d.form_player2,
+                form_first_name: d.form_first_name,
+                form_last_name: d.form_last_name,
+                form_email: d.form_email,
+                form_rating: d.form_rating,
+                form_rating_placeholder: d.form_rating_placeholder,
+                form_submit_register: d.form_submit_register,
+                form_submit_waitlist: d.form_submit_waitlist,
+                form_submitting: d.form_submitting,
+                payment_info: d.payment_info,
+                success_registered_title: d.success_registered_title,
+                success_registered_desc: d.success_registered_desc,
+                success_waitlisted_title: d.success_waitlisted_title,
+                success_waitlisted_desc: d.success_waitlisted_desc,
+                register_another: d.register_another,
+              }}
             />
           </section>
         )}
@@ -243,6 +269,7 @@ export default async function TournamentDetailPage({
           </div>
         </section>
       </main>
+      <PublicFooter />
     </div>
   );
 }

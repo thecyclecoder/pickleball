@@ -3,13 +3,12 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { RATING_OPTIONS } from "@/lib/types";
-import type { Dict } from "@/lib/i18n";
 
 type CategoryOpt = {
   id: string;
   label: string;
   is_full: boolean;
-  spots_remaining: number;
+  spots_label: string;
 };
 
 type Payment = {
@@ -17,6 +16,26 @@ type Payment = {
   ath_qr_url?: string;
   venmo_handle?: string;
   ath_handle?: string;
+};
+
+type Labels = {
+  form_category: string;
+  form_player1: string;
+  form_player2: string;
+  form_first_name: string;
+  form_last_name: string;
+  form_email: string;
+  form_rating: string;
+  form_rating_placeholder: string;
+  form_submit_register: string;
+  form_submit_waitlist: string;
+  form_submitting: string;
+  payment_info: string;
+  success_registered_title: string;
+  success_registered_desc: string;
+  success_waitlisted_title: string;
+  success_waitlisted_desc: string;
+  register_another: string;
 };
 
 type PlayerFields = {
@@ -32,12 +51,12 @@ export function RegisterForm({
   tournamentSlug,
   categories,
   payment,
-  dict,
+  labels,
 }: {
   tournamentSlug: string;
   categories: CategoryOpt[];
   payment: Payment;
-  dict: Dict;
+  labels: Labels;
 }) {
   const router = useRouter();
   const [categoryId, setCategoryId] = useState(categories[0]?.id ?? "");
@@ -77,17 +96,17 @@ export function RegisterForm({
     return (
       <div className="rounded-xl border border-emerald-700/40 bg-emerald-950/30 p-5 sm:p-6">
         <h3 className="mb-2 text-lg font-semibold text-emerald-300">
-          {success.status === "waitlisted" ? dict.success_waitlisted_title : dict.success_registered_title}
+          {success.status === "waitlisted" ? labels.success_waitlisted_title : labels.success_registered_title}
         </h3>
         <p className="mb-4 text-sm text-emerald-100/80">
-          {success.status === "waitlisted" ? dict.success_waitlisted_desc : dict.success_registered_desc}
+          {success.status === "waitlisted" ? labels.success_waitlisted_desc : labels.success_registered_desc}
         </p>
-        {showPayment && <PaymentPanel payment={payment} dict={dict} />}
+        {showPayment && <PaymentPanel payment={payment} />}
         <button
           onClick={() => setSuccess(null)}
           className="mt-4 text-xs text-emerald-400 hover:text-emerald-300"
         >
-          {dict.register_another}
+          {labels.register_another}
         </button>
       </div>
     );
@@ -97,7 +116,7 @@ export function RegisterForm({
     <form onSubmit={onSubmit} className="space-y-5 rounded-xl border border-zinc-800 bg-zinc-900 p-5 sm:space-y-6 sm:p-6">
       <div>
         <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-zinc-400">
-          {dict.form_category}
+          {labels.form_category}
         </label>
         <select
           value={categoryId}
@@ -107,14 +126,14 @@ export function RegisterForm({
         >
           {categories.map((c) => (
             <option key={c.id} value={c.id}>
-              {c.label} {c.is_full ? dict.form_waitlist_only : dict.form_spots_left(c.spots_remaining)}
+              {c.label} {c.spots_label}
             </option>
           ))}
         </select>
       </div>
 
-      <PlayerFieldset title={dict.form_player1} player={p1} onChange={setP1} dict={dict} />
-      <PlayerFieldset title={dict.form_player2} player={p2} onChange={setP2} dict={dict} />
+      <PlayerFieldset title={labels.form_player1} player={p1} onChange={setP1} labels={labels} />
+      <PlayerFieldset title={labels.form_player2} player={p2} onChange={setP2} labels={labels} />
 
       {error && (
         <p className="rounded-lg border border-red-800 bg-red-950/40 px-3 py-2 text-xs text-red-300">
@@ -128,16 +147,16 @@ export function RegisterForm({
         className="w-full rounded-lg bg-emerald-600 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-emerald-500 disabled:cursor-not-allowed disabled:bg-zinc-800"
       >
         {submitting
-          ? dict.form_submitting
+          ? labels.form_submitting
           : selectedCategory?.is_full
-            ? dict.form_submit_waitlist
-            : dict.form_submit_register}
+            ? labels.form_submit_waitlist
+            : labels.form_submit_register}
       </button>
 
       {showPayment && (
         <div className="pt-2">
-          <p className="mb-3 text-xs uppercase tracking-wider text-zinc-500">{dict.payment_info}</p>
-          <PaymentPanel payment={payment} dict={dict} />
+          <p className="mb-3 text-xs uppercase tracking-wider text-zinc-500">{labels.payment_info}</p>
+          <PaymentPanel payment={payment} />
         </div>
       )}
     </form>
@@ -148,33 +167,33 @@ function PlayerFieldset({
   title,
   player,
   onChange,
-  dict,
+  labels,
 }: {
   title: string;
   player: PlayerFields;
   onChange: (p: PlayerFields) => void;
-  dict: Dict;
+  labels: Labels;
 }) {
   return (
     <fieldset>
       <legend className="mb-2 text-sm font-semibold text-white">{title}</legend>
       <div className="grid gap-3 sm:grid-cols-2">
         <TextField
-          label={dict.form_first_name}
+          label={labels.form_first_name}
           value={player.first_name}
           onChange={(v) => onChange({ ...player, first_name: v })}
           required
           autoComplete="given-name"
         />
         <TextField
-          label={dict.form_last_name}
+          label={labels.form_last_name}
           value={player.last_name}
           onChange={(v) => onChange({ ...player, last_name: v })}
           required
           autoComplete="family-name"
         />
         <TextField
-          label={dict.form_email}
+          label={labels.form_email}
           type="email"
           value={player.email}
           onChange={(v) => onChange({ ...player, email: v })}
@@ -184,7 +203,7 @@ function PlayerFieldset({
         />
         <div>
           <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-zinc-400">
-            {dict.form_rating}
+            {labels.form_rating}
           </label>
           <select
             required
@@ -192,7 +211,7 @@ function PlayerFieldset({
             onChange={(e) => onChange({ ...player, rating: e.target.value })}
             className="w-full rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-2.5 text-sm text-white focus:border-emerald-600 focus:outline-none"
           >
-            <option value="">{dict.form_rating_placeholder}</option>
+            <option value="">{labels.form_rating_placeholder}</option>
             {RATING_OPTIONS.map((r) => (
               <option key={r} value={r}>
                 {r}
@@ -240,7 +259,7 @@ function TextField({
   );
 }
 
-function PaymentPanel({ payment }: { payment: Payment; dict: Dict }) {
+function PaymentPanel({ payment }: { payment: Payment }) {
   return (
     <div className="grid gap-4 sm:grid-cols-2">
       {(payment.venmo_qr_url || payment.venmo_handle) && (
