@@ -214,6 +214,51 @@ SUPABASE_SERVICE_ROLE_KEY=<service role key>
 NEXT_PUBLIC_SITE_URL=<vercel URL or custom domain>
 ```
 
+## Database Access (CLI)
+
+### Push migrations
+```bash
+npx supabase db push
+```
+Project is already linked to ref `jfpeyuwffumrlkokejha`.
+
+### Query the database from scripts
+```javascript
+// Source .env.local for the keys, then:
+const { createClient } = require('@supabase/supabase-js');
+const c = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY
+);
+const { data } = await c.from('table_name').select('*');
+```
+
+Or use the admin client in the app code:
+```typescript
+import { createAdminClient } from "@/lib/supabase/admin";
+const admin = createAdminClient();
+const { data } = await admin.from("tournaments").select("*").eq("workspace_id", workspaceId);
+```
+
+### Run ad-hoc queries
+```bash
+source .env.local && node -e "
+const { createClient } = require('@supabase/supabase-js');
+const c = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+(async () => {
+  const { data, error } = await c.from('workspaces').select('*');
+  console.log(data || error);
+})();
+"
+```
+
+### Supabase Storage
+```bash
+# Create bucket via dashboard or API:
+# Dashboard: https://supabase.com/dashboard/project/jfpeyuwffumrlkokejha/storage/buckets
+# Bucket name: tournament-images (public, 5MB limit, image/* only)
+```
+
 ## Conventions
 - Run `npx tsc --noEmit` before committing
 - Migrations: `supabase/migrations/YYYYMMDDNNNNNN_description.sql`
