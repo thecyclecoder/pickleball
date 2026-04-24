@@ -169,7 +169,7 @@ function Section({
             return (
               <li key={r.team.id} className="rounded-xl border border-zinc-800 bg-zinc-900">
                 <Link
-                  href={`/tournaments/${tour.slug}`}
+                  href={`/me/registrations/${r.team.id}`}
                   className="flex flex-wrap items-start justify-between gap-3 px-5 py-4 hover:bg-zinc-900/50"
                 >
                   <div className="min-w-0 flex-1">

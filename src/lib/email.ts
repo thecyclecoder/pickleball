@@ -40,7 +40,11 @@ export async function generateMagicLink(email: string): Promise<string> {
   const { data, error } = await admin.auth.admin.generateLink({
     type: "magiclink",
     email,
-    options: { redirectTo: SITE_URL },
+    // Land the recipient directly on /me so they don't briefly see the
+    // landing page before <AuthHashBootstrap> processes the hash tokens.
+    // If Supabase ever falls back to Site URL root, the bootstrap still
+    // catches and routes them to /me (just with a brief flash).
+    options: { redirectTo: `${SITE_URL}/me` },
   });
   if (error) throw new Error(`generateLink: ${error.message}`);
   const verifyUrl = data?.properties?.action_link;

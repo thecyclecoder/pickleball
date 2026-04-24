@@ -105,12 +105,15 @@ export type Team = {
 
 export type Player = {
   id: string;
-  team_id: string;
+  team_id: string | null;
+  workspace_id: string | null;
+  user_id: string | null;
   first_name: string;
   last_name: string;
   email: string;
   rating: number;
   is_captain: boolean;
+  confirmed_at: string | null;
   created_at: string;
 };
 

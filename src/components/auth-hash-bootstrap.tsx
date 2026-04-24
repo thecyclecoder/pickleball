@@ -36,8 +36,13 @@ export function AuthHashBootstrap() {
       });
       history.replaceState(null, "", window.location.pathname + window.location.search);
       if (!error) {
-        // Every magic-link sign-in lands the user on their profile.
-        router.replace("/me");
+        // Normally Supabase's redirect_to lands them on /me already;
+        // fall back to routing them there if they ended up anywhere else.
+        if (window.location.pathname !== "/me") {
+          router.replace("/me");
+        } else {
+          router.refresh();
+        }
       }
     })();
   }, [router]);
