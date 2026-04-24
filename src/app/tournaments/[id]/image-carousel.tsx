@@ -54,7 +54,7 @@ export function ImageCarousel({ images, alt }: { images: TournamentImage[]; alt:
               decoding="async"
               draggable={false}
               aria-hidden={i !== index}
-              className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-700 ease-in-out ${
+              className={`absolute inset-0 h-full w-full object-contain transition-opacity duration-700 ease-in-out ${
                 i === index ? "opacity-100" : "opacity-0"
               }`}
             />
