@@ -129,5 +129,5 @@ export type TournamentWithDetails = Tournament & {
 };
 
 export const RATING_OPTIONS = ["2.5", "3.0", "3.5", "4.0", "4.5", "5.0", "5.5", "6.0", "6.5"] as const;
-export const CATEGORY_RATINGS = ["3.0", "3.5", "4.0", "4.5", "4.5+", "open"] as const;
+export const CATEGORY_RATINGS = ["3.0", "3.5", "4.0", "4.0+", "4.5", "4.5+", "5.0", "5.0+", "open"] as const;
 export const CATEGORY_TYPES: CategoryType[] = ["MD", "WD", "MXD"];
