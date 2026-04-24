@@ -7,7 +7,8 @@ import { categoryLabelI18n, getLocale, pick, t } from "@/lib/i18n";
 import { PublicHeader } from "@/components/public-header";
 import { PublicFooter } from "@/components/public-footer";
 import { ImageCarousel } from "@/app/tournaments/[id]/image-carousel";
-import type { Tournament, TournamentCategory, TournamentImage, Player, PaymentStatus, TeamStatus } from "@/lib/types";
+import type { Tournament, TournamentCategory, TournamentImage, Player, PaymentStatus, TeamStatus, TournamentFormat } from "@/lib/types";
+import { FormatTimeline } from "@/components/format-timeline";
 
 export const dynamic = "force-dynamic";
 
@@ -17,7 +18,7 @@ type LoadedTeam = {
   payment_status: PaymentStatus;
   registered_at: string;
   players: Player[];
-  category: TournamentCategory;
+  category: TournamentCategory & { format: TournamentFormat | null };
   tournament: Tournament;
 };
 
@@ -39,7 +40,7 @@ export default async function RegistrationDetailPage({
     .select(
       `id, status, payment_status, registered_at,
        players (*),
-       category:tournament_categories!inner (*),
+       category:tournament_categories!inner (*, format:tournament_formats (*)),
        tournament:tournaments!inner (*)`
     )
     .eq("id", teamId)
@@ -147,6 +148,19 @@ export default async function RegistrationDetailPage({
                 {partner && <PlayerRow player={partner} isMe={false} locale={locale} />}
               </ul>
             </section>
+
+            {row.category.format && (
+              <section className="mb-8">
+                <h2 className="mb-2 text-sm font-semibold uppercase tracking-wider text-zinc-400">
+                  {locale === "es" ? "Formato" : "Format"}
+                </h2>
+                <FormatTimeline
+                  format={row.category.format}
+                  advancePerPool={row.category.advance_per_pool}
+                  locale={locale}
+                />
+              </section>
+            )}
 
             {/* Tournament info (same as public detail) */}
             <dl className="mb-8 grid gap-3 rounded-xl border border-zinc-800 bg-zinc-900 p-4 text-sm sm:grid-cols-2 sm:p-5">

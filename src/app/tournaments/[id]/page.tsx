@@ -16,7 +16,8 @@ import { PublicHeader } from "@/components/public-header";
 import { PublicFooter } from "@/components/public-footer";
 import { ImageCarousel } from "./image-carousel";
 import type { Tournament, TournamentCategory, Team, Player, Workspace, TournamentImage } from "@/lib/types";
-import { largestSrc, stageRulesText, type TournamentFormat } from "@/lib/types";
+import { largestSrc, type TournamentFormat } from "@/lib/types";
+import { FormatTimeline } from "@/components/format-timeline";
 import { RegisterForm } from "./register-form";
 import { buildSportsEventJsonLd, tournamentCanonicalUrl } from "@/lib/seo";
 
@@ -307,28 +308,13 @@ export default async function TournamentDetailPage({
                     </span>
                   </div>
                   {fmt && (
-                    <dl className="mt-2 grid gap-1.5 text-[11px] sm:grid-cols-4">
-                      <FormatStage
-                        label="Pool"
-                        text={stageRulesText(fmt.pool_play_games_to, fmt.pool_play_win_by, fmt.pool_play_best_of)}
-                        enabled
+                    <div className="mt-3">
+                      <FormatTimeline
+                        format={fmt}
+                        advancePerPool={c.advance_per_pool}
+                        locale={locale}
                       />
-                      <FormatStage
-                        label="QF"
-                        text={stageRulesText(fmt.quarterfinals_games_to, fmt.quarterfinals_win_by, fmt.quarterfinals_best_of)}
-                        enabled={fmt.has_quarterfinals}
-                      />
-                      <FormatStage
-                        label="SF"
-                        text={stageRulesText(fmt.semifinals_games_to, fmt.semifinals_win_by, fmt.semifinals_best_of)}
-                        enabled={fmt.has_semifinals}
-                      />
-                      <FormatStage
-                        label="F"
-                        text={stageRulesText(fmt.finals_games_to, fmt.finals_win_by, fmt.finals_best_of)}
-                        enabled={fmt.has_finals}
-                      />
-                    </dl>
+                    </div>
                   )}
                 </li>
               );
@@ -428,11 +414,3 @@ export default async function TournamentDetailPage({
   );
 }
 
-function FormatStage({ label, text, enabled }: { label: string; text: string; enabled: boolean }) {
-  return (
-    <div className={enabled ? "" : "opacity-30"}>
-      <dt className="text-[9px] uppercase tracking-wider text-zinc-500">{label}</dt>
-      <dd className="mt-0.5 text-zinc-300">{enabled ? text : "—"}</dd>
-    </div>
-  );
-}
