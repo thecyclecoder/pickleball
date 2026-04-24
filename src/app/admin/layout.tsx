@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { getCurrentMembership } from "@/lib/auth";
 import { AccessDenied } from "./access-denied";
 import { SignOutButton } from "./sign-out-button";
+import { Logo } from "@/components/logo";
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const res = await getCurrentMembership();
@@ -14,8 +15,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       <header className="border-b border-zinc-900">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
           <div className="flex items-center gap-6">
-            <Link href="/admin" className="text-sm font-semibold text-white">
-              Buen Tiro · Admin
+            <Link href="/admin" aria-label="Buen Tiro" className="flex items-center gap-2 text-white">
+              <Logo height={24} />
+              <span className="hidden text-xs uppercase tracking-widest text-zinc-500 sm:inline">Admin</span>
             </Link>
             <nav className="hidden gap-5 text-sm text-zinc-400 sm:flex">
               <Link href="/admin" className="hover:text-white">Dashboard</Link>

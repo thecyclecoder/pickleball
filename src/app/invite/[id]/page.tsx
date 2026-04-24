@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { InviteAcceptClient } from "./accept-client";
+import { Logo } from "@/components/logo";
 
 export const dynamic = "force-dynamic";
 
@@ -36,6 +37,9 @@ export default async function InvitePage({
   return (
     <div className="flex min-h-screen items-center justify-center bg-zinc-950 px-6 py-12">
       <div className="w-full max-w-md rounded-2xl border border-zinc-800 bg-zinc-900 p-8">
+        <div className="mb-5 flex justify-center text-white">
+          <Logo height={28} />
+        </div>
         <p className="mb-3 text-xs font-medium uppercase tracking-[0.2em] text-emerald-500">
           You&apos;re invited
         </p>

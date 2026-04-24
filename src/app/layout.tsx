@@ -15,6 +15,13 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Buen Tiro — Pickleball Tournaments",
   description: "Find and register for pickleball tournaments in Puerto Rico.",
+  manifest: "/manifest.json",
+  themeColor: "#10b981",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Buen Tiro",
+  },
 };
 
 export default function RootLayout({

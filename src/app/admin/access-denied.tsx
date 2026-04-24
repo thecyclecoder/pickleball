@@ -1,9 +1,13 @@
 import Link from "next/link";
+import { Logo } from "@/components/logo";
 
 export function AccessDenied({ email }: { email?: string }) {
   return (
     <div className="flex min-h-screen items-center justify-center bg-zinc-950 px-6">
       <div className="w-full max-w-md rounded-2xl border border-zinc-800 bg-zinc-900 p-8 text-center">
+        <div className="mb-5 flex justify-center text-white">
+          <Logo height={28} />
+        </div>
         <h1 className="mb-2 text-2xl font-semibold text-white">Access denied</h1>
         <p className="mb-5 text-sm text-zinc-400">
           {email ? (
