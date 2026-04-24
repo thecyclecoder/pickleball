@@ -2,7 +2,7 @@
   "name": "Buen Tiro",
   "short_name": "Buen Tiro",
   "description": "Pickleball tournaments in Puerto Rico",
-  "start_url": "/",
+  "start_url": "/launch",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#09090b",
