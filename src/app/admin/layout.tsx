@@ -5,13 +5,12 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { SignOutButton } from "./sign-out-button";
 import { WorkspaceSwitcher } from "./workspace-switcher";
 import { Logo } from "@/components/logo";
+import { AccessDenied } from "./access-denied";
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const res = await getCurrentMembership();
   if (res.status === "anon") redirect("/login?next=/admin");
-  // Signed in but not a workspace member → they're just a regular player;
-  // silently route them to their profile.
-  if (res.status === "denied") redirect("/me");
+  if (res.status === "denied") return <AccessDenied email={res.user.email ?? undefined} />;
 
   const admin = createAdminClient();
   const workspaceIds = res.allMemberships.map((m) => m.workspace_id);

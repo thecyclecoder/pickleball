@@ -1,38 +1,28 @@
-import Link from "next/link";
-import { getCurrentUser } from "@/lib/auth";
-import { getLocale, t } from "@/lib/i18n";
+import { getCurrentMembership } from "@/lib/auth";
+import { getLocale } from "@/lib/i18n";
 import { LanguageSwitcher } from "./language-switcher";
 import { HomeLink } from "./home-link";
+import { PublicMenu } from "./public-menu";
 
-export async function PublicHeader({ active }: { active?: "tournaments" | "me" | null }) {
+export async function PublicHeader({
+  active,
+}: {
+  active?: "tournaments" | "me" | null;
+}) {
+  void active; // active highlighting is handled per-page; menu is a dropdown
   const locale = await getLocale();
-  const d = t(locale);
-  const user = await getCurrentUser();
+  const membership = await getCurrentMembership();
+  const signedIn = membership.status !== "anon";
+  const canAdmin = membership.status === "ok";
+
   return (
     <header className="border-b border-zinc-900">
       <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-4 sm:px-6 sm:py-5">
         <HomeLink height={28} />
-        <nav className="flex items-center gap-3 text-sm text-zinc-400 sm:gap-5">
-          <Link
-            href="/tournaments"
-            className={active === "tournaments" ? "text-white" : "hover:text-white"}
-          >
-            {d.nav_tournaments}
-          </Link>
-          {user ? (
-            <Link
-              href="/me"
-              className={active === "me" ? "text-white" : "hover:text-white"}
-            >
-              {locale === "es" ? "Mi perfil" : "My profile"}
-            </Link>
-          ) : (
-            <Link href="/login" className="hover:text-white">
-              {locale === "es" ? "Entrar" : "Sign in"}
-            </Link>
-          )}
+        <div className="flex items-center gap-2 sm:gap-3">
           <LanguageSwitcher current={locale} />
-        </nav>
+          <PublicMenu locale={locale} signedIn={signedIn} canAdmin={canAdmin} />
+        </div>
       </div>
     </header>
   );
