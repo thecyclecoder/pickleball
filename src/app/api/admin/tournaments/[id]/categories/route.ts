@@ -26,6 +26,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const label_es = body.label_es ?? null;
   const teamLimit = Number(body.team_limit ?? 16);
   const sortOrder = Number(body.sort_order ?? 0);
+  const formatId = body.format_id ?? null;
 
   if (!CATEGORY_TYPES.includes(type)) {
     return NextResponse.json({ error: "Invalid type" }, { status: 400 });
@@ -45,6 +46,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       label_es: label_es?.trim() || null,
       team_limit: teamLimit,
       sort_order: sortOrder,
+      format_id: formatId,
     })
     .select()
     .single();

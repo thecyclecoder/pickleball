@@ -8,6 +8,7 @@ import {
   largestSrc,
   pickSrc,
   type CategoryType,
+  type TournamentFormat,
   type TournamentImage,
 } from "@/lib/types";
 
@@ -44,6 +45,7 @@ type CategoryDraft = {
   label_es: string;
   team_limit: number;
   sort_order: number;
+  format_id: string | null;
 };
 
 const TIMEZONES = [
@@ -58,10 +60,12 @@ export function TournamentForm({
   mode,
   initialTournament,
   initialCategories,
+  formats,
 }: {
   mode: "create" | "edit";
   initialTournament?: TournamentFormInput;
   initialCategories?: CategoryDraft[];
+  formats: TournamentFormat[];
 }) {
   const router = useRouter();
   const [form, setForm] = useState<TournamentFormInput>(
@@ -391,7 +395,7 @@ export function TournamentForm({
       </Section>
 
       <Section title="Categories">
-        <CategoryEditor categories={categories} setCategories={setCategories} />
+        <CategoryEditor categories={categories} setCategories={setCategories} formats={formats} />
       </Section>
 
       <Section title="Payment" description="QR code for Venmo/ATH and payment instructions shown on the registration form.">
@@ -562,9 +566,11 @@ function BilingualField({
 function CategoryEditor({
   categories,
   setCategories,
+  formats,
 }: {
   categories: CategoryDraft[];
   setCategories: (c: CategoryDraft[]) => void;
+  formats: TournamentFormat[];
 }) {
   function add() {
     setCategories([
@@ -576,6 +582,7 @@ function CategoryEditor({
         label_es: "",
         team_limit: 16,
         sort_order: categories.length,
+        format_id: null,
       },
     ]);
   }
@@ -644,8 +651,8 @@ function CategoryEditor({
               />
             </div>
           </div>
-          <div className="mt-3 flex items-end gap-3">
-            <div className="flex-1">
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            <div>
               <Label>Label (ES, optional)</Label>
               <input
                 value={c.label_es}
@@ -654,10 +661,27 @@ function CategoryEditor({
                 className="w-full rounded-lg border border-zinc-800 bg-zinc-900 px-2 py-2 text-sm text-white"
               />
             </div>
+            <div>
+              <Label>Format</Label>
+              <select
+                value={c.format_id ?? ""}
+                onChange={(e) => update(i, { format_id: e.target.value || null })}
+                className="w-full rounded-lg border border-zinc-800 bg-zinc-900 px-2 py-2 text-sm text-white"
+              >
+                <option value="">— No format selected —</option>
+                {formats.map((f) => (
+                  <option key={f.id} value={f.id}>
+                    {f.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <div className="mt-3 flex justify-end">
             <button
               type="button"
               onClick={() => remove(i)}
-              className="mb-[1px] rounded-lg border border-red-900 bg-red-950/40 px-3 py-2 text-xs text-red-300 hover:bg-red-950"
+              className="rounded-lg border border-red-900 bg-red-950/40 px-3 py-2 text-xs text-red-300 hover:bg-red-950"
             >
               Remove
             </button>

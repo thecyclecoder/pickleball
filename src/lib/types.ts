@@ -90,8 +90,46 @@ export type TournamentCategory = {
   label_es: string | null;
   team_limit: number;
   sort_order: number;
+  format_id: string | null;
   created_at: string;
 };
+
+export type TournamentFormat = {
+  id: string;
+  workspace_id: string;
+  name: string;
+  description: string | null;
+  pool_play_games_to: number;
+  pool_play_win_by: number;
+  pool_play_best_of: number;
+  pool_play_advance_per_pool: number;
+  has_quarterfinals: boolean;
+  quarterfinals_games_to: number | null;
+  quarterfinals_win_by: number | null;
+  quarterfinals_best_of: number | null;
+  has_semifinals: boolean;
+  semifinals_games_to: number | null;
+  semifinals_win_by: number | null;
+  semifinals_best_of: number | null;
+  has_finals: boolean;
+  finals_games_to: number | null;
+  finals_win_by: number | null;
+  finals_best_of: number | null;
+  created_at: string;
+  updated_at: string;
+};
+
+/** Human-friendly description of a single stage's rules, e.g.
+ *  "Best of 3, games to 11, win by 2". */
+export function stageRulesText(
+  gamesTo: number | null,
+  winBy: number | null,
+  bestOf: number | null
+): string {
+  if (!gamesTo || !winBy || !bestOf) return "—";
+  const gamesPart = bestOf > 1 ? `Best of ${bestOf}, games to ${gamesTo}` : `1 game to ${gamesTo}`;
+  return winBy > 1 ? `${gamesPart}, win by ${winBy}` : gamesPart;
+}
 
 export type Team = {
   id: string;

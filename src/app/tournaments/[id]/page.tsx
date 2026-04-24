@@ -16,7 +16,7 @@ import { PublicHeader } from "@/components/public-header";
 import { PublicFooter } from "@/components/public-footer";
 import { ImageCarousel } from "./image-carousel";
 import type { Tournament, TournamentCategory, Team, Player, Workspace, TournamentImage } from "@/lib/types";
-import { largestSrc } from "@/lib/types";
+import { largestSrc, stageRulesText, type TournamentFormat } from "@/lib/types";
 import { RegisterForm } from "./register-form";
 import { buildSportsEventJsonLd, tournamentCanonicalUrl } from "@/lib/seo";
 
@@ -103,7 +103,7 @@ export async function generateMetadata({
   };
 }
 
-type LoadedCategory = TournamentCategory;
+type LoadedCategory = TournamentCategory & { format: TournamentFormat | null };
 type LoadedTeam = Team & { players: Player[] };
 
 export default async function TournamentDetailPage({
@@ -123,7 +123,7 @@ export default async function TournamentDetailPage({
     .select(
       `*,
        workspace:workspaces (id, name, payment_info),
-       categories:tournament_categories (*),
+       categories:tournament_categories (*, format:tournament_formats (*)),
        teams (
          *,
          players (*)
@@ -296,14 +296,43 @@ export default async function TournamentDetailPage({
         <section className="mb-8">
           <h2 className="mb-2 text-lg font-semibold text-white sm:text-xl">{d.section_categories}</h2>
           <ul className="divide-y divide-zinc-800 overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900">
-            {categoriesView.map((c) => (
-              <li key={c.id} className="flex items-center justify-between gap-3 px-4 py-3 text-sm sm:px-5">
-                <span className="text-white">{c.display}</span>
-                <span className={`whitespace-nowrap text-xs ${c.is_full ? "text-amber-500" : "text-zinc-400"}`}>
-                  {formatTeamsOf(locale, c.teams.length, c.team_limit)} {c.is_full && d.waitlist_suffix}
-                </span>
-              </li>
-            ))}
+            {categoriesView.map((c) => {
+              const fmt = c.format;
+              return (
+                <li key={c.id} className="px-4 py-3 text-sm sm:px-5">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-white">{c.display}</span>
+                    <span className={`whitespace-nowrap text-xs ${c.is_full ? "text-amber-500" : "text-zinc-400"}`}>
+                      {formatTeamsOf(locale, c.teams.length, c.team_limit)} {c.is_full && d.waitlist_suffix}
+                    </span>
+                  </div>
+                  {fmt && (
+                    <dl className="mt-2 grid gap-1.5 text-[11px] sm:grid-cols-4">
+                      <FormatStage
+                        label="Pool"
+                        text={stageRulesText(fmt.pool_play_games_to, fmt.pool_play_win_by, fmt.pool_play_best_of)}
+                        enabled
+                      />
+                      <FormatStage
+                        label="QF"
+                        text={stageRulesText(fmt.quarterfinals_games_to, fmt.quarterfinals_win_by, fmt.quarterfinals_best_of)}
+                        enabled={fmt.has_quarterfinals}
+                      />
+                      <FormatStage
+                        label="SF"
+                        text={stageRulesText(fmt.semifinals_games_to, fmt.semifinals_win_by, fmt.semifinals_best_of)}
+                        enabled={fmt.has_semifinals}
+                      />
+                      <FormatStage
+                        label="F"
+                        text={stageRulesText(fmt.finals_games_to, fmt.finals_win_by, fmt.finals_best_of)}
+                        enabled={fmt.has_finals}
+                      />
+                    </dl>
+                  )}
+                </li>
+              );
+            })}
             {categoriesView.length === 0 && (
               <li className="px-5 py-6 text-center text-sm text-zinc-500">{d.no_categories}</li>
             )}
@@ -393,6 +422,15 @@ export default async function TournamentDetailPage({
         </div>
       </main>
       <PublicFooter />
+    </div>
+  );
+}
+
+function FormatStage({ label, text, enabled }: { label: string; text: string; enabled: boolean }) {
+  return (
+    <div className={enabled ? "" : "opacity-30"}>
+      <dt className="text-[9px] uppercase tracking-wider text-zinc-500">{label}</dt>
+      <dd className="mt-0.5 text-zinc-300">{enabled ? text : "—"}</dd>
     </div>
   );
 }

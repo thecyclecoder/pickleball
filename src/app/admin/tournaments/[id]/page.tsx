@@ -7,7 +7,7 @@ import { categoryLabel } from "@/lib/categories";
 import { TournamentForm } from "../tournament-form";
 import { RegistrationsPanel } from "./registrations-panel";
 import { DangerZone } from "./danger-zone";
-import type { Tournament, TournamentCategory, Team, Player } from "@/lib/types";
+import type { Tournament, TournamentCategory, Team, Player, TournamentFormat } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -38,6 +38,13 @@ export default async function AdminTournamentEditPage({
     categories: TournamentCategory[];
     teams: (Team & { players: Player[] })[];
   };
+
+  const { data: formatRows } = await admin
+    .from("tournament_formats")
+    .select("*")
+    .eq("workspace_id", res.member.workspace_id)
+    .order("created_at", { ascending: false });
+  const formats = (formatRows ?? []) as TournamentFormat[];
 
   const publicUrl = `/tournaments/${tournament.slug}`;
 
@@ -110,7 +117,9 @@ export default async function AdminTournamentEditPage({
             label_es: c.label_es ?? "",
             team_limit: c.team_limit,
             sort_order: c.sort_order,
+            format_id: c.format_id ?? null,
           }))}
+          formats={formats}
         />
       </div>
 
