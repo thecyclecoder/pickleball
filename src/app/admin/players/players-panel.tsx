@@ -1,15 +1,43 @@
 "use client";
 
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import type { PlayerAggregate } from "./page";
 
 type Filter = "all" | "confirmed" | "pending";
 
 export function PlayersPanel({ players }: { players: PlayerAggregate[] }) {
+  const router = useRouter();
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [deletingEmail, setDeletingEmail] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
+
+  function deletePlayer(p: PlayerAggregate, ev: React.MouseEvent) {
+    ev.stopPropagation();
+    const confirmed = window.confirm(
+      `Delete ${p.first_name} ${p.last_name} (${p.email}) from this workspace?\n\n` +
+        `This removes all ${p.registration_count} registration${p.registration_count === 1 ? "" : "s"} ` +
+        `and the associated teams. Partner players stay in the database but become detached.\n\n` +
+        `The person's login account (if any) is NOT deleted.`
+    );
+    if (!confirmed) return;
+    setDeletingEmail(p.email);
+    startTransition(async () => {
+      const res = await fetch(`/api/admin/players?email=${encodeURIComponent(p.email)}`, {
+        method: "DELETE",
+      });
+      setDeletingEmail(null);
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        alert(body.error || "Failed to delete");
+        return;
+      }
+      router.refresh();
+    });
+  }
 
   const rows = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -61,6 +89,7 @@ export function PlayersPanel({ players }: { players: PlayerAggregate[] }) {
               <th className="px-5 py-3 text-left">Registrations</th>
               <th className="hidden px-5 py-3 text-left sm:table-cell">Last registered</th>
               <th className="px-5 py-3 text-left">Account</th>
+              <th className="px-5 py-3 text-right"></th>
             </tr>
           </thead>
           <tbody className="divide-y divide-zinc-800">
@@ -92,10 +121,21 @@ export function PlayersPanel({ players }: { players: PlayerAggregate[] }) {
                         </span>
                       )}
                     </td>
+                    <td className="px-5 py-3 text-right">
+                      <button
+                        type="button"
+                        onClick={(e) => deletePlayer(p, e)}
+                        disabled={pending && deletingEmail === p.email}
+                        title="Delete player"
+                        className="text-xs text-red-400 hover:text-red-300 disabled:opacity-50"
+                      >
+                        {pending && deletingEmail === p.email ? "Deleting…" : "Delete"}
+                      </button>
+                    </td>
                   </tr>
                   {isOpen && (
                     <tr className="bg-zinc-950/40">
-                      <td colSpan={6} className="px-5 py-4">
+                      <td colSpan={7} className="px-5 py-4">
                         <p className="mb-2 text-[10px] uppercase tracking-wider text-zinc-500 md:hidden">
                           {p.email}
                         </p>
@@ -136,7 +176,7 @@ export function PlayersPanel({ players }: { players: PlayerAggregate[] }) {
             })}
             {rows.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-5 py-8 text-center text-sm text-zinc-500">
+                <td colSpan={7} className="px-5 py-8 text-center text-sm text-zinc-500">
                   No players match your filter.
                 </td>
               </tr>
