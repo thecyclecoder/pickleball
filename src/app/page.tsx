@@ -5,6 +5,7 @@ import { getLocale, pick, t } from "@/lib/i18n";
 import { PublicHeader } from "@/components/public-header";
 import { PublicFooter } from "@/components/public-footer";
 import { CoverSlideshow } from "@/components/cover-slideshow";
+import { StandaloneRedirect } from "@/components/standalone-redirect";
 import type { TournamentImage } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -28,6 +29,7 @@ export default async function Home() {
 
   return (
     <div className="flex min-h-screen flex-col">
+      <StandaloneRedirect />
       <PublicHeader />
 
       <section className="mx-auto flex w-full max-w-5xl flex-1 flex-col items-center justify-center px-6 py-24 text-center">
