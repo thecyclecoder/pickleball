@@ -37,18 +37,32 @@ type ClinicRegRaw = {
   clinic: { id: string; slug: string; title: string } | null;
 };
 
+type LessonRequestRaw = {
+  id: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+  skill_level: string;
+  user_id: string | null;
+  confirmed_at: string | null;
+  created_at: string;
+  workspace_id: string | null;
+  status: string;
+  coach: { id: string; slug: string; display_name: string } | null;
+};
+
 export type PlayerAggregate = {
   email: string;
   first_name: string;
   last_name: string;
-  /** Display string — numeric for tournament players, "Beginner" / number for clinics. */
+  /** Display string — numeric for tournament players, "Beginner" / number for clinics + lessons. */
   rating: string;
   has_account: boolean;
   registration_count: number;
   last_registered_at: string;
   workspaces: { id: string; name: string }[];
   events: {
-    kind: "tournament" | "clinic";
+    kind: "tournament" | "clinic" | "lesson";
     id: string;
     slug: string;
     title: string;
@@ -89,16 +103,25 @@ export default async function AdminPlayersPage({
        clinic:clinics (id, slug, title)`
     )
     .order("registered_at", { ascending: false });
+  const lessonQuery = admin
+    .from("lesson_requests")
+    .select(
+      `id, first_name, last_name, email, skill_level, user_id, confirmed_at, created_at, workspace_id, status,
+       coach:coach_profiles (id, slug, display_name)`
+    )
+    .order("created_at", { ascending: false });
 
-  const [playersRes, clinicRes, workspacesRes] = await Promise.all([
+  const [playersRes, clinicRes, lessonRes, workspacesRes] = await Promise.all([
     showAll ? playersQuery : playersQuery.eq("workspace_id", res.member.workspace_id),
     showAll ? clinicQuery : clinicQuery.eq("workspace_id", res.member.workspace_id),
+    showAll ? lessonQuery : lessonQuery.eq("workspace_id", res.member.workspace_id),
     admin.from("workspaces").select("id, name"),
   ]);
   const wsById = new Map((workspacesRes.data ?? []).map((w) => [w.id, w.name]));
 
   const players = (playersRes.data ?? []) as unknown as PlayerRaw[];
   const clinicRegs = (clinicRes.data ?? []) as unknown as ClinicRegRaw[];
+  const lessonReqs = (lessonRes.data ?? []) as unknown as LessonRequestRaw[];
 
   const byEmail = new Map<string, PlayerAggregate>();
 
@@ -186,6 +209,38 @@ export default async function AdminPlayersPage({
         workspace_name: r.workspace_id ? wsById.get(r.workspace_id) ?? "Workspace" : "—",
         registered_at: r.registered_at,
         status: r.status,
+      });
+    }
+  }
+
+  for (const lr of lessonReqs) {
+    const key = lr.email.toLowerCase();
+    const ratingDisplay = lr.skill_level === "beginner" ? "Beginner" : lr.skill_level;
+    const agg = ensure(key, {
+      first_name: lr.first_name,
+      last_name: lr.last_name,
+      email: key,
+      rating: ratingDisplay,
+    });
+    agg.registration_count += 1;
+    if (lr.confirmed_at) agg.has_account = true;
+    if (lr.created_at > agg.last_registered_at) {
+      agg.last_registered_at = lr.created_at;
+      agg.first_name = lr.first_name;
+      agg.last_name = lr.last_name;
+      agg.rating = ratingDisplay;
+    }
+    noteWorkspace(agg, lr.workspace_id);
+    if (lr.coach) {
+      agg.events.push({
+        kind: "lesson",
+        id: lr.coach.id,
+        slug: lr.coach.slug,
+        title: `Lesson request — ${lr.coach.display_name}`,
+        workspace_id: lr.workspace_id,
+        workspace_name: lr.workspace_id ? wsById.get(lr.workspace_id) ?? "Workspace" : "—",
+        registered_at: lr.created_at,
+        status: lr.status,
       });
     }
   }

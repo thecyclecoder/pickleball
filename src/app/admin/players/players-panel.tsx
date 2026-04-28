@@ -197,7 +197,9 @@ export function PlayersPanel({
                                 href={
                                   ev.kind === "tournament"
                                     ? `/admin/tournaments/${ev.id}`
-                                    : `/admin/clinics/${ev.id}`
+                                    : ev.kind === "clinic"
+                                      ? `/admin/clinics/${ev.id}`
+                                      : "/admin/coach"
                                 }
                                 className="text-zinc-200 hover:text-emerald-400"
                               >
@@ -205,7 +207,9 @@ export function PlayersPanel({
                                   className={`mr-2 rounded border px-1.5 py-0.5 text-[9px] uppercase tracking-wider ${
                                     ev.kind === "clinic"
                                       ? "border-amber-800 text-amber-400"
-                                      : "border-zinc-700 text-zinc-400"
+                                      : ev.kind === "lesson"
+                                        ? "border-emerald-800 text-emerald-400"
+                                        : "border-zinc-700 text-zinc-400"
                                   }`}
                                 >
                                   {ev.kind}
