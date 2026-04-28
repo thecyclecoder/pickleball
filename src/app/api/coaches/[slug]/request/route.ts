@@ -102,9 +102,13 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
       coachName: coach.display_name,
       coachSlug: coach.slug,
       first,
+      last,
       email,
+      phone,
       skill,
       lessonType,
+      goals,
+      scheduleNotes,
     }).catch((e) => console.error("Lesson req requester email failed:", e)),
     notifyCoachWorkspace({
       coachId: coach.id,
@@ -127,9 +131,13 @@ async function sendRequesterConfirmation(args: {
   coachName: string;
   coachSlug: string;
   first: string;
+  last: string;
   email: string;
+  phone: string | null;
   skill: string;
   lessonType: LessonType | null;
+  goals: string | null;
+  scheduleNotes: string | null;
 }) {
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://buentiro.app";
   const link = await generateMagicLink(args.email).catch((e) => {
@@ -139,11 +147,15 @@ async function sendRequesterConfirmation(args: {
   await sendLessonRequestRequesterEmail({
     toEmail: args.email,
     toFirstName: args.first,
+    toLastName: args.last,
+    toPhone: args.phone,
     coachName: args.coachName,
     coachUrl: `${siteUrl}/coaches/${args.coachSlug}`,
     confirmLink: link,
     skillLevel: args.skill === "beginner" ? "Beginner" : args.skill,
     lessonType: args.lessonType ? lessonTypeLabel(args.lessonType, "en") : null,
+    goals: args.goals,
+    scheduleNotes: args.scheduleNotes,
   });
 }
 

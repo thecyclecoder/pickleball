@@ -385,25 +385,41 @@ export async function sendClinicRegistrationEmail(args: ClinicEmailArgs): Promis
 type LessonRequesterEmailArgs = {
   toEmail: string;
   toFirstName: string;
+  toLastName: string;
+  toPhone: string | null;
   coachName: string;
   coachUrl: string;
   confirmLink: string;
   skillLevel: string;
   lessonType: string | null;
+  goals: string | null;
+  scheduleNotes: string | null;
 };
 
 export async function sendLessonRequestRequesterEmail(
   args: LessonRequesterEmailArgs
 ): Promise<void> {
-  const { toFirstName, coachName, coachUrl, confirmLink, skillLevel, lessonType } = args;
+  const {
+    toFirstName,
+    toLastName,
+    toEmail,
+    toPhone,
+    coachName,
+    coachUrl,
+    confirmLink,
+    skillLevel,
+    lessonType,
+    goals,
+    scheduleNotes,
+  } = args;
   const subject = `Your lesson request to ${coachName}`;
   const headline = `Your lesson request is in`;
   const intro = `Hi ${toFirstName}, we sent your lesson request to <strong>${escapeHtml(coachName)}</strong>. They'll reach out to schedule a time. Click below to sign in and track this on your profile — no password needed.`;
 
-  const detailRow = (label: string, value: string) => `
+  const detailRow = (label: string, valueHtml: string) => `
     <tr><td style="padding:0 16px 14px;">
       <div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#71717a;">${label}</div>
-      <div style="font-size:14px;color:#fafafa;margin-top:2px;">${escapeHtml(value)}</div>
+      <div style="font-size:14px;color:#fafafa;margin-top:2px;white-space:pre-wrap;">${valueHtml}</div>
     </td></tr>`;
 
   const html = `<!doctype html>
@@ -420,17 +436,22 @@ export async function sendLessonRequestRequesterEmail(
           <h1 style="margin:0 0 8px;font-size:22px;line-height:1.25;color:#fafafa;font-weight:700;">${escapeHtml(headline)}</h1>
           <p style="margin:0 0 16px;font-size:14px;line-height:1.55;color:#a1a1aa;">${intro}</p>
         </td></tr>
+        <tr><td style="padding:0 28px 8px;">
+          <p style="margin:0 0 6px;font-size:12px;text-transform:uppercase;letter-spacing:1px;color:#71717a;">Your request</p>
+        </td></tr>
         <tr><td style="padding:0 28px 16px;">
           <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#09090b;border:1px solid #27272a;border-radius:12px;">
-            <tr><td style="padding:14px 16px 0;">
+            <tr><td style="padding:14px 16px 14px;">
               <div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#71717a;">Coach</div>
               <div style="font-size:14px;color:#fafafa;margin-top:2px;">${escapeHtml(coachName)}</div>
             </td></tr>
-            <tr><td style="padding:14px 16px 0;">
-              <div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#71717a;">Skill level</div>
-              <div style="font-size:14px;color:#fafafa;margin-top:2px;">${escapeHtml(skillLevel)}</div>
-            </td></tr>
-            ${lessonType ? detailRow("Lesson type", lessonType) : ""}
+            ${detailRow("Name", escapeHtml(`${toFirstName} ${toLastName}`))}
+            ${detailRow("Email", `<a href="mailto:${toEmail}" style="color:#34d399;text-decoration:none;">${escapeHtml(toEmail)}</a>`)}
+            ${toPhone ? detailRow("Phone", escapeHtml(toPhone)) : ""}
+            ${detailRow("Skill level", escapeHtml(skillLevel))}
+            ${lessonType ? detailRow("Lesson type", escapeHtml(lessonType)) : ""}
+            ${goals ? detailRow("Goals", escapeHtml(goals)) : ""}
+            ${scheduleNotes ? detailRow("Availability", escapeHtml(scheduleNotes)) : ""}
           </table>
         </td></tr>
         <tr><td style="padding:0 28px 12px;">
@@ -449,8 +470,11 @@ export async function sendLessonRequestRequesterEmail(
 
 We sent your lesson request to ${coachName}. They'll reach out to schedule a time.
 
-Skill level: ${skillLevel}
-${lessonType ? `Lesson type: ${lessonType}\n` : ""}
+Your request:
+Name: ${toFirstName} ${toLastName}
+Email: ${toEmail}
+${toPhone ? `Phone: ${toPhone}\n` : ""}Skill level: ${skillLevel}
+${lessonType ? `Lesson type: ${lessonType}\n` : ""}${goals ? `Goals: ${goals}\n` : ""}${scheduleNotes ? `Availability: ${scheduleNotes}\n` : ""}
 Sign in & track this: ${confirmLink}
 Coach profile: ${coachUrl}
 
@@ -458,12 +482,12 @@ Coach profile: ${coachUrl}
 
   const { error } = await resend().emails.send({
     from: FROM,
-    to: args.toEmail,
+    to: toEmail,
     subject,
     html,
     text,
   });
-  if (error) console.error("Resend send error (lesson req requester):", error, "to:", args.toEmail);
+  if (error) console.error("Resend send error (lesson req requester):", error, "to:", toEmail);
 }
 
 type LessonCoachEmailArgs = {
