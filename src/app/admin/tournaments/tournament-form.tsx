@@ -50,6 +50,16 @@ type CategoryDraft = {
   format_id: string | null;
   pool_count: number | null;
   advance_per_pool: number | null;
+  semifinals_court_id: string | null;
+  finals_court_id: string | null;
+};
+
+type CourtDraft = {
+  /** Server id when persisted. Used by the form's diffing logic on save. */
+  id?: string;
+  number: number;
+  name: string;
+  sort_order: number;
 };
 
 const TIMEZONES = [
@@ -64,11 +74,13 @@ export function TournamentForm({
   mode,
   initialTournament,
   initialCategories,
+  initialCourts,
   formats,
 }: {
   mode: "create" | "edit";
   initialTournament?: TournamentFormInput;
   initialCategories?: CategoryDraft[];
+  initialCourts?: CourtDraft[];
   formats: TournamentFormat[];
 }) {
   const router = useRouter();
@@ -98,6 +110,7 @@ export function TournamentForm({
     }
   );
   const [categories, setCategories] = useState<CategoryDraft[]>(initialCategories ?? []);
+  const [courts, setCourts] = useState<CourtDraft[]>(initialCourts ?? []);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [uploadingImage, setUploadingImage] = useState(false);
@@ -193,6 +206,60 @@ export function TournamentForm({
         if (!res.ok) throw new Error(body.error || "Failed to save");
       }
 
+      // Save courts BEFORE categories — categories may reference court ids,
+      // so a brand-new court being assigned as a semi/finals override needs
+      // to exist server-side first. We map local CourtDraft objects to
+      // their newly-created server ids so category writes use the right id.
+      const courtIdMap = new Map<string, string>(); // local key → server id
+      if (tournamentId) {
+        for (const c of courts) {
+          if (c.id) {
+            courtIdMap.set(c.id, c.id);
+            continue;
+          }
+          const r = await fetch(`/api/admin/tournaments/${tournamentId}/courts`, {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ number: c.number, name: c.name || null, sort_order: c.sort_order }),
+          });
+          if (!r.ok) {
+            const b = await r.json();
+            throw new Error(b.error || "Failed to add court");
+          }
+          const body = await r.json();
+          // Local-key for new courts is "new:<index>", but we don't have
+          // an index here — instead use court number as the local key
+          // since numbers are unique within a tournament.
+          courtIdMap.set(`new:${c.number}`, body.court.id);
+        }
+
+        for (const c of courts) {
+          if (!c.id) continue;
+          await fetch(`/api/admin/tournaments/${tournamentId}/courts/${c.id}`, {
+            method: "PATCH",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ number: c.number, name: c.name || null, sort_order: c.sort_order }),
+          });
+        }
+
+        const keptCourtIds = new Set(courts.filter((c) => c.id).map((c) => c.id as string));
+        for (const c of initialCourts ?? []) {
+          if (c.id && !keptCourtIds.has(c.id)) {
+            await fetch(`/api/admin/tournaments/${tournamentId}/courts/${c.id}`, {
+              method: "DELETE",
+            });
+          }
+        }
+      }
+
+      // Helper that resolves a category's draft court ref to a real server id.
+      // Drafts use the form `new:<number>` for unsaved courts; once their
+      // POST returns a server uuid, the courtIdMap rewrites the value.
+      function resolveCourtId(ref: string | null): string | null {
+        if (!ref) return null;
+        return courtIdMap.get(ref) ?? ref;
+      }
+
       // Save categories
       if (tournamentId) {
         // Insert new categories (those without id)
@@ -201,7 +268,11 @@ export function TournamentForm({
           const r = await fetch(`/api/admin/tournaments/${tournamentId}/categories`, {
             method: "POST",
             headers: { "content-type": "application/json" },
-            body: JSON.stringify(c),
+            body: JSON.stringify({
+              ...c,
+              semifinals_court_id: resolveCourtId(c.semifinals_court_id),
+              finals_court_id: resolveCourtId(c.finals_court_id),
+            }),
           });
           if (!r.ok) {
             const b = await r.json();
@@ -215,7 +286,11 @@ export function TournamentForm({
           await fetch(`/api/admin/tournaments/${tournamentId}/categories/${c.id}`, {
             method: "PATCH",
             headers: { "content-type": "application/json" },
-            body: JSON.stringify(c),
+            body: JSON.stringify({
+              ...c,
+              semifinals_court_id: resolveCourtId(c.semifinals_court_id),
+              finals_court_id: resolveCourtId(c.finals_court_id),
+            }),
           });
         }
 
@@ -398,8 +473,20 @@ export function TournamentForm({
         />
       </Section>
 
+      <Section
+        title="Courts"
+        description="Number each court at the venue (e.g. 4 courts → 1, 2, 3, 4). The pool/bracket generator spreads games across these and lets you pin specific courts for semifinals and finals on each category."
+      >
+        <CourtsEditor courts={courts} setCourts={setCourts} />
+      </Section>
+
       <Section title="Categories">
-        <CategoryEditor categories={categories} setCategories={setCategories} formats={formats} />
+        <CategoryEditor
+          categories={categories}
+          setCategories={setCategories}
+          formats={formats}
+          courts={courts}
+        />
       </Section>
 
       <Section title="Payment" description="QR code for Venmo/ATH and payment instructions shown on the registration form.">
@@ -571,10 +658,12 @@ function CategoryEditor({
   categories,
   setCategories,
   formats,
+  courts,
 }: {
   categories: CategoryDraft[];
   setCategories: (c: CategoryDraft[]) => void;
   formats: TournamentFormat[];
+  courts: CourtDraft[];
 }) {
   function add() {
     setCategories([
@@ -590,6 +679,8 @@ function CategoryEditor({
         format_id: null,
         pool_count: null,
         advance_per_pool: null,
+        semifinals_court_id: null,
+        finals_court_id: null,
       },
     ]);
   }
@@ -699,6 +790,22 @@ function CategoryEditor({
               </select>
             </div>
           </div>
+          {courts.length > 0 && (
+            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+              <CourtSelect
+                label="Semifinals court (optional)"
+                value={c.semifinals_court_id}
+                courts={courts}
+                onChange={(v) => update(i, { semifinals_court_id: v })}
+              />
+              <CourtSelect
+                label="Finals court (optional)"
+                value={c.finals_court_id}
+                courts={courts}
+                onChange={(v) => update(i, { finals_court_id: v })}
+              />
+            </div>
+          )}
           <div className="mt-3 grid gap-3 sm:grid-cols-3">
             <div>
               <Label>Pool count</Label>
@@ -752,6 +859,119 @@ function CategoryEditor({
         className="rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-200 hover:border-emerald-600 hover:text-emerald-400"
       >
         + Add category
+      </button>
+    </div>
+  );
+}
+
+function CourtSelect({
+  label,
+  value,
+  courts,
+  onChange,
+}: {
+  label: string;
+  value: string | null;
+  courts: CourtDraft[];
+  onChange: (v: string | null) => void;
+}) {
+  return (
+    <div>
+      <Label>{label}</Label>
+      <select
+        value={value ?? ""}
+        onChange={(e) => onChange(e.target.value || null)}
+        className="w-full rounded-lg border border-zinc-800 bg-zinc-900 px-2 py-2 text-sm text-white"
+      >
+        <option value="">— Generator picks —</option>
+        {courts.map((c) => {
+          // For unsaved courts the value is "new:<number>" so the form's
+          // resolveCourtId() can swap it for the real uuid on save.
+          const courtKey = c.id ?? `new:${c.number}`;
+          return (
+            <option key={courtKey} value={courtKey}>
+              {c.name ? `Court ${c.number} — ${c.name}` : `Court ${c.number}`}
+            </option>
+          );
+        })}
+      </select>
+    </div>
+  );
+}
+
+function CourtsEditor({
+  courts,
+  setCourts,
+}: {
+  courts: CourtDraft[];
+  setCourts: (c: CourtDraft[]) => void;
+}) {
+  function add() {
+    // Suggest the next unused number, defaulting to 1 if empty.
+    const used = new Set(courts.map((c) => c.number));
+    let next = 1;
+    while (used.has(next)) next++;
+    setCourts([
+      ...courts,
+      { number: next, name: "", sort_order: courts.length },
+    ]);
+  }
+  function update(i: number, patch: Partial<CourtDraft>) {
+    setCourts(courts.map((c, idx) => (idx === i ? { ...c, ...patch } : c)));
+  }
+  function remove(i: number) {
+    setCourts(courts.filter((_, idx) => idx !== i));
+  }
+
+  return (
+    <div className="space-y-3">
+      {courts.length === 0 && (
+        <p className="rounded-lg border border-dashed border-zinc-800 p-4 text-center text-xs text-zinc-500">
+          No courts yet. Add the courts at the venue so the pool/bracket generator can spread games across them.
+        </p>
+      )}
+      {courts.map((c, i) => (
+        <div
+          key={c.id ?? `new:${i}`}
+          className="rounded-lg border border-zinc-800 bg-zinc-950 p-3"
+        >
+          <div className="grid gap-3 sm:grid-cols-[120px_1fr_auto] sm:items-end">
+            <div>
+              <Label>Court number</Label>
+              <input
+                type="number"
+                min={1}
+                value={c.number}
+                onChange={(e) => update(i, { number: Number(e.target.value) })}
+                className="w-full rounded-lg border border-zinc-800 bg-zinc-900 px-2 py-2 text-sm text-white"
+              />
+            </div>
+            <div>
+              <Label>Display name (optional)</Label>
+              <input
+                type="text"
+                value={c.name}
+                placeholder='e.g. "Center Court"'
+                onChange={(e) => update(i, { name: e.target.value })}
+                className="w-full rounded-lg border border-zinc-800 bg-zinc-900 px-2 py-2 text-sm text-white"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={() => remove(i)}
+              className="rounded-lg border border-red-900 bg-red-950/40 px-3 py-2 text-xs text-red-300 hover:bg-red-950"
+            >
+              Remove
+            </button>
+          </div>
+        </div>
+      ))}
+      <button
+        type="button"
+        onClick={add}
+        className="rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-200 hover:border-emerald-600 hover:text-emerald-400"
+      >
+        + Add court
       </button>
     </div>
   );

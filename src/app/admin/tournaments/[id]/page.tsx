@@ -7,7 +7,14 @@ import { categoryLabel } from "@/lib/categories";
 import { TournamentForm } from "../tournament-form";
 import { RegistrationsPanel } from "./registrations-panel";
 import { DangerZone } from "./danger-zone";
-import type { Tournament, TournamentCategory, Team, Player, TournamentFormat } from "@/lib/types";
+import type {
+  Tournament,
+  TournamentCategory,
+  TournamentCourt,
+  Team,
+  Player,
+  TournamentFormat,
+} from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -26,6 +33,7 @@ export default async function AdminTournamentEditPage({
     .select(
       `*,
        categories:tournament_categories (*),
+       courts:tournament_courts (*),
        teams (*, players (*))`
     )
     .eq("id", id)
@@ -36,6 +44,7 @@ export default async function AdminTournamentEditPage({
   if (!data) notFound();
   const tournament = data as Tournament & {
     categories: TournamentCategory[];
+    courts: TournamentCourt[];
     teams: (Team & { players: Player[] })[];
   };
 
@@ -45,6 +54,10 @@ export default async function AdminTournamentEditPage({
     .eq("workspace_id", res.member.workspace_id)
     .order("created_at", { ascending: false });
   const formats = (formatRows ?? []) as TournamentFormat[];
+
+  const sortedCourts = [...tournament.courts].sort(
+    (a, b) => a.sort_order - b.sort_order || a.number - b.number
+  );
 
   const publicUrl = `/tournaments/${tournament.slug}`;
 
@@ -121,6 +134,14 @@ export default async function AdminTournamentEditPage({
             format_id: c.format_id ?? null,
             pool_count: c.pool_count ?? null,
             advance_per_pool: c.advance_per_pool ?? null,
+            semifinals_court_id: c.semifinals_court_id ?? null,
+            finals_court_id: c.finals_court_id ?? null,
+          }))}
+          initialCourts={sortedCourts.map((c) => ({
+            id: c.id,
+            number: c.number,
+            name: c.name ?? "",
+            sort_order: c.sort_order,
           }))}
           formats={formats}
         />

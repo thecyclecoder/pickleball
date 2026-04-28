@@ -51,6 +51,8 @@ export async function PATCH(
     "format_id",
     "pool_count",
     "advance_per_pool",
+    "semifinals_court_id",
+    "finals_court_id",
   ]) {
     if (key in body) {
       const v = body[key];

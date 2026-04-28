@@ -102,6 +102,18 @@ export type TournamentCategory = {
   format_id: string | null;
   pool_count: number | null;
   advance_per_pool: number | null;
+  /** Override court for the showcase rounds. NULL = generator picks. */
+  semifinals_court_id: string | null;
+  finals_court_id: string | null;
+  created_at: string;
+};
+
+export type TournamentCourt = {
+  id: string;
+  tournament_id: string;
+  number: number;
+  name: string | null;
+  sort_order: number;
   created_at: string;
 };
 

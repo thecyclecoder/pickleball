@@ -39,6 +39,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     body.advance_per_pool === null || body.advance_per_pool === undefined || body.advance_per_pool === ""
       ? null
       : Number(body.advance_per_pool);
+  const semifinalsCourtId = body.semifinals_court_id || null;
+  const finalsCourtId = body.finals_court_id || null;
 
   if (!CATEGORY_TYPES.includes(type)) {
     return NextResponse.json({ error: "Invalid type" }, { status: 400 });
@@ -65,6 +67,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       format_id: formatId,
       pool_count: poolCount,
       advance_per_pool: advancePerPool,
+      semifinals_court_id: semifinalsCourtId,
+      finals_court_id: finalsCourtId,
     })
     .select()
     .single();
