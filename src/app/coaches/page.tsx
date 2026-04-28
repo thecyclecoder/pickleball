@@ -133,7 +133,8 @@ export default async function CoachesListPage() {
                     </div>
                   </div>
 
-                  {(c.lesson_types?.length || c.skill_levels?.length) && (
+                  {((c.lesson_types?.length ?? 0) > 0 ||
+                    (c.skill_levels?.length ?? 0) > 0) && (
                     <div className="flex flex-wrap gap-1.5">
                       {(c.lesson_types ?? []).map((lt) => (
                         <span

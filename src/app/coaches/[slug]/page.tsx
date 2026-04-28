@@ -43,21 +43,31 @@ export async function generateMetadata({
   const { slug } = await params;
   const c = await loadCoach(slug);
   if (!c) return { title: "Coach not found" };
-  const description =
-    c.tagline?.trim() ||
-    c.bio?.slice(0, 240)?.trim() ||
-    `Take a pickleball lesson with ${c.display_name} in Puerto Rico.`;
+
+  // Share-card format: "Coach: <Name>" / "<tagline> · DUPR x.xxx · <area>"
+  // — keeps the most identifying info (name, role, rating) above any
+  // truncation that platforms apply to long descriptions.
+  const titleShare = `Coach: ${c.display_name}`;
+  const descParts: string[] = [];
+  if (c.tagline?.trim()) descParts.push(c.tagline.trim());
+  if (c.dupr_rating != null) descParts.push(`DUPR ${c.dupr_rating}`);
+  if (c.service_area?.trim()) descParts.push(c.service_area.trim().split(/\n/)[0]);
+  const description = descParts.length
+    ? descParts.join(" · ")
+    : c.bio?.slice(0, 240)?.trim() ||
+      `Take a pickleball lesson with ${c.display_name} in Puerto Rico.`;
+
   const cover = (c.images ?? [])[0];
   const ogImage = cover ? largestSrc(cover) : c.avatar_url ?? "/icon-512.png";
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://buentiro.app";
   const canonical = `${siteUrl}/coaches/${c.slug}`;
   return {
-    title: `${c.display_name} — Pickleball Coach`,
+    title: titleShare,
     description,
     alternates: { canonical },
     openGraph: {
       type: "profile",
-      title: c.display_name,
+      title: titleShare,
       description,
       url: canonical,
       siteName: "Buen Tiro",
@@ -65,7 +75,7 @@ export async function generateMetadata({
     },
     twitter: {
       card: "summary_large_image",
-      title: c.display_name,
+      title: titleShare,
       description,
       images: [ogImage],
     },
@@ -138,14 +148,24 @@ export default async function CoachDetailPage({
           languageEs: "Spanish",
         };
 
+  const jsonLdDescParts: string[] = [];
+  if (c.tagline?.trim()) jsonLdDescParts.push(c.tagline.trim());
+  if (c.dupr_rating != null) jsonLdDescParts.push(`DUPR ${c.dupr_rating}`);
+  if (c.bio?.trim()) jsonLdDescParts.push(c.bio.trim().slice(0, 400));
   const personJsonLd = {
     "@context": "https://schema.org",
     "@type": "Person",
     name: c.display_name,
-    description: c.tagline ?? c.bio?.slice(0, 240) ?? undefined,
+    description: jsonLdDescParts.length > 0 ? jsonLdDescParts.join(" — ") : undefined,
     image: c.avatar_url ?? (c.images?.[0] ? largestSrc(c.images[0]) : undefined),
     jobTitle: "Pickleball Coach",
+    knowsLanguage:
+      c.languages && c.languages.length > 0
+        ? c.languages.map((l) => (l === "es" ? "Spanish" : l === "en" ? "English" : l))
+        : undefined,
+    areaServed: c.service_area?.trim() || "Puerto Rico",
     worksFor: c.workspace?.name ? { "@type": "Organization", name: c.workspace.name } : undefined,
+    url: `${process.env.NEXT_PUBLIC_SITE_URL || "https://buentiro.app"}/coaches/${c.slug}`,
   };
 
   return (
@@ -196,11 +216,13 @@ export default async function CoachDetailPage({
               </section>
             )}
 
-            {(c.lesson_types?.length || c.skill_levels?.length || c.languages?.length) && (
+            {((c.lesson_types?.length ?? 0) > 0 ||
+              (c.skill_levels?.length ?? 0) > 0 ||
+              (c.languages?.length ?? 0) > 0) && (
               <section className="mb-8">
                 <h2 className="mb-3 text-lg font-semibold text-white sm:text-xl">{L.lessonsHeading}</h2>
                 <div className="grid gap-3 rounded-xl border border-zinc-800 bg-zinc-900 p-4 text-sm sm:p-5">
-                  {c.lesson_types?.length > 0 && (
+                  {(c.lesson_types?.length ?? 0) > 0 && (
                     <div>
                       <p className="mb-1.5 text-[10px] font-medium uppercase tracking-wider text-zinc-500">
                         {L.lessonTypes}
@@ -217,7 +239,7 @@ export default async function CoachDetailPage({
                       </div>
                     </div>
                   )}
-                  {c.skill_levels?.length > 0 && (
+                  {(c.skill_levels?.length ?? 0) > 0 && (
                     <div>
                       <p className="mb-1.5 text-[10px] font-medium uppercase tracking-wider text-zinc-500">
                         {L.skillLevels}
@@ -234,7 +256,7 @@ export default async function CoachDetailPage({
                       </div>
                     </div>
                   )}
-                  {c.languages?.length > 0 && (
+                  {(c.languages?.length ?? 0) > 0 && (
                     <div>
                       <p className="mb-1.5 text-[10px] font-medium uppercase tracking-wider text-zinc-500">
                         {L.languages}
