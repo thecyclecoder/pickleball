@@ -517,6 +517,11 @@ export async function sendLessonRequestCoachEmail(
     scheduleNotes,
     manageUrl,
   } = args;
+  // Reply-To set to the requester so the coach can just hit Reply in
+  // their email client and the message goes straight to the player.
+  // Note: when set, replies bypass Buen Tiro entirely, so we can't auto-
+  // detect them via webhook — status changes still go through the
+  // /admin/coach panel.
   const subject = `New lesson request from ${requesterName}`;
   const headline = `New lesson request`;
   const intro = `Hi ${escapeHtml(coachName)}, <strong>${escapeHtml(requesterName)}</strong> just requested a lesson. Reply to <a href="mailto:${requesterEmail}" style="color:#34d399;">${escapeHtml(requesterEmail)}</a> to schedule a time.`;
@@ -578,6 +583,7 @@ Manage in admin: ${manageUrl}
   const { error } = await resend().emails.send({
     from: FROM,
     to: args.toEmail,
+    replyTo: requesterEmail,
     subject,
     html,
     text,
