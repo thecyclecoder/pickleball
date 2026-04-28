@@ -5,8 +5,7 @@ import { formatTournamentDate, formatTime } from "@/lib/format";
 import { getLocale, pick, t } from "@/lib/i18n";
 import { PublicHeader } from "@/components/public-header";
 import { PublicFooter } from "@/components/public-footer";
-import { CoverSlideshow } from "@/components/cover-slideshow";
-import type { TournamentImage } from "@/lib/types";
+import { largestSrc, srcSetAttr, type TournamentImage } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -97,10 +96,10 @@ export default async function ClinicsListPage() {
           </div>
         ) : (
           <div className="grid items-start gap-0 sm:gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {clinics.map((c, idx) => {
+            {clinics.map((c) => {
               const active = c.registrations.filter((r) => r.status !== "cancelled").length;
               const spotsOpen = c.capacity != null ? c.capacity - active : null;
-              const imgs = c.images ?? [];
+              const cover = (c.images ?? [])[0];
               const title = pick<string>(c.title, c.title_es ?? "", locale);
               const location = pick<string>(c.location, c.location_es ?? "", locale);
               return (
@@ -110,13 +109,24 @@ export default async function ClinicsListPage() {
                   className="group overflow-hidden border-b border-zinc-800 bg-zinc-900 transition-colors hover:border-emerald-600 sm:rounded-xl sm:border sm:border-zinc-800"
                 >
                   <div className="bg-zinc-800">
-                    {imgs.length > 0 ? (
-                      <CoverSlideshow
-                        images={imgs}
-                        alt={c.title}
-                        sizes="(min-width: 1024px) 320px, (min-width: 640px) 45vw, 100vw"
-                        stagger={idx * 600}
-                      />
+                    {cover ? (
+                      <picture>
+                        <source
+                          type="image/webp"
+                          srcSet={srcSetAttr(cover)}
+                          sizes="(min-width: 1024px) 320px, (min-width: 640px) 45vw, 100vw"
+                        />
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={largestSrc(cover)}
+                          srcSet={srcSetAttr(cover)}
+                          sizes="(min-width: 1024px) 320px, (min-width: 640px) 45vw, 100vw"
+                          alt={c.title}
+                          loading="lazy"
+                          decoding="async"
+                          className="block h-auto w-full"
+                        />
+                      </picture>
                     ) : c.flyer_image_url ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={c.flyer_image_url} alt={c.title} className="block h-auto w-full" />

@@ -6,8 +6,7 @@ import { formatTournamentDate, formatTime } from "@/lib/format";
 import { categoryLabelI18n, formatSpotsOpen, getLocale, pick, t } from "@/lib/i18n";
 import { PublicHeader } from "@/components/public-header";
 import { PublicFooter } from "@/components/public-footer";
-import { CoverSlideshow } from "@/components/cover-slideshow";
-import type { CategoryType, Team, TournamentImage } from "@/lib/types";
+import { largestSrc, srcSetAttr, type CategoryType, type Team, type TournamentImage } from "@/lib/types";
 import { tournamentCanonicalUrl } from "@/lib/seo";
 
 export const metadata: Metadata = {
@@ -108,11 +107,11 @@ export default async function TournamentsPage() {
           </div>
         ) : (
           <div className="grid items-start gap-0 sm:gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {tournaments.map((tt, idx) => {
+            {tournaments.map((tt) => {
               const totalLimit = tt.categories.reduce((a, c) => a + c.team_limit, 0);
               const totalActive = tt.teams.filter((x) => x.status !== "cancelled").length;
               const spotsOpen = totalLimit - totalActive;
-              const imgs = tt.images ?? [];
+              const cover = (tt.images ?? [])[0];
               return (
                 <Link
                   key={tt.id}
@@ -120,13 +119,24 @@ export default async function TournamentsPage() {
                   className="group overflow-hidden border-b border-zinc-800 bg-zinc-900 transition-colors hover:border-emerald-600 sm:rounded-xl sm:border sm:border-zinc-800"
                 >
                   <div className="bg-zinc-800">
-                    {imgs.length > 0 ? (
-                      <CoverSlideshow
-                        images={imgs}
-                        alt={tt.title}
-                        sizes="(min-width: 1024px) 320px, (min-width: 640px) 45vw, 100vw"
-                        stagger={idx * 600}
-                      />
+                    {cover ? (
+                      <picture>
+                        <source
+                          type="image/webp"
+                          srcSet={srcSetAttr(cover)}
+                          sizes="(min-width: 1024px) 320px, (min-width: 640px) 45vw, 100vw"
+                        />
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={largestSrc(cover)}
+                          srcSet={srcSetAttr(cover)}
+                          sizes="(min-width: 1024px) 320px, (min-width: 640px) 45vw, 100vw"
+                          alt={tt.title}
+                          loading="lazy"
+                          decoding="async"
+                          className="block h-auto w-full"
+                        />
+                      </picture>
                     ) : tt.flyer_image_url ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
