@@ -1,4 +1,4 @@
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 
 export const LOCALES = ["en", "es"] as const;
 export type Locale = (typeof LOCALES)[number];
@@ -6,9 +6,38 @@ export const LOCALE_COOKIE = "locale";
 export const DEFAULT_LOCALE: Locale = "en";
 
 export async function getLocale(): Promise<Locale> {
+  // Explicit user choice (set by the LanguageSwitcher) always wins.
   const store = await cookies();
   const v = store.get(LOCALE_COOKIE)?.value;
-  return v === "es" ? "es" : "en";
+  if (v === "es" || v === "en") return v;
+
+  // No cookie yet → sniff the browser's Accept-Language header. This is
+  // intentionally browser-preference-based, not geolocation-based, since a
+  // PR resident might prefer English (and a tourist in PR might prefer
+  // Spanish) — the OS language setting reflects what they want to read.
+  const h = await headers();
+  const accept = h.get("accept-language") ?? "";
+  return prefersSpanish(accept) ? "es" : "en";
+}
+
+/** Parse an Accept-Language header and return true if Spanish ranks
+ *  higher than English (or English isn't there at all). */
+function prefersSpanish(acceptLanguage: string): boolean {
+  const items = acceptLanguage
+    .split(",")
+    .map((s) => {
+      const [code, qStr] = s.trim().split(";q=");
+      const q = qStr ? parseFloat(qStr) : 1.0;
+      return { lang: code.toLowerCase(), q: Number.isFinite(q) ? q : 1.0 };
+    })
+    .filter((x) => x.lang)
+    .sort((a, b) => b.q - a.q);
+
+  for (const item of items) {
+    if (item.lang.startsWith("es")) return true;
+    if (item.lang.startsWith("en")) return false;
+  }
+  return false;
 }
 
 export function pick<T extends string | null | undefined>(en: T, es: T, locale: Locale): T {
