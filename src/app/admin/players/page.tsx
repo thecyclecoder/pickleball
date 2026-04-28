@@ -299,7 +299,11 @@ export default async function AdminPlayersPage({
           <p className="mb-3 text-sm text-zinc-400">No players yet.</p>
         </div>
       ) : (
-        <PlayersPanel players={aggregates} showWorkspaceColumn={showAll} />
+        <PlayersPanel
+          players={aggregates}
+          showWorkspaceColumn={showAll}
+          isSuperAdmin={superAdmin}
+        />
       )}
     </div>
   );

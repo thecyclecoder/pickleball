@@ -10,14 +10,17 @@ type Filter = "all" | "confirmed" | "pending";
 export function PlayersPanel({
   players,
   showWorkspaceColumn,
+  isSuperAdmin = false,
 }: {
   players: PlayerAggregate[];
   showWorkspaceColumn: boolean;
+  isSuperAdmin?: boolean;
 }) {
   const router = useRouter();
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [editingEmail, setEditingEmail] = useState<string | null>(null);
   const [deletingEmail, setDeletingEmail] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -168,17 +171,33 @@ export function PlayersPanel({
                       )}
                     </td>
                     <td className="px-5 py-3 text-right">
-                      {!showWorkspaceColumn && (
-                        <button
-                          type="button"
-                          onClick={(e) => deletePlayer(p, e)}
-                          disabled={pending && deletingEmail === p.email}
-                          title="Delete player from this workspace"
-                          className="text-xs text-red-400 hover:text-red-300 disabled:opacity-50"
-                        >
-                          {pending && deletingEmail === p.email ? "Deleting…" : "Delete"}
-                        </button>
-                      )}
+                      <div className="flex justify-end gap-3">
+                        {isSuperAdmin && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setEditingEmail(p.email);
+                              setExpanded(p.email);
+                            }}
+                            title="Edit player details"
+                            className="text-xs text-emerald-400 hover:text-emerald-300"
+                          >
+                            Edit
+                          </button>
+                        )}
+                        {!showWorkspaceColumn && (
+                          <button
+                            type="button"
+                            onClick={(e) => deletePlayer(p, e)}
+                            disabled={pending && deletingEmail === p.email}
+                            title="Delete player from this workspace"
+                            className="text-xs text-red-400 hover:text-red-300 disabled:opacity-50"
+                          >
+                            {pending && deletingEmail === p.email ? "Deleting…" : "Delete"}
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                   {isOpen && (
@@ -187,6 +206,16 @@ export function PlayersPanel({
                         <p className="mb-2 text-[10px] uppercase tracking-wider text-zinc-500 md:hidden">
                           {p.email}
                         </p>
+                        {isSuperAdmin && editingEmail === p.email && (
+                          <EditPlayerForm
+                            player={p}
+                            onClose={() => setEditingEmail(null)}
+                            onSaved={() => {
+                              setEditingEmail(null);
+                              router.refresh();
+                            }}
+                          />
+                        )}
                         <p className="mb-2 text-xs uppercase tracking-wider text-zinc-500">
                           Registrations ({p.events.length})
                         </p>
@@ -261,4 +290,137 @@ function escapeCsv(v: string): string {
     return `"${v.replace(/"/g, '""')}"`;
   }
   return v;
+}
+
+function EditPlayerForm({
+  player,
+  onClose,
+  onSaved,
+}: {
+  player: PlayerAggregate;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [firstName, setFirstName] = useState(player.first_name);
+  const [lastName, setLastName] = useState(player.last_name);
+  const [phone, setPhone] = useState("");
+  // The aggregate's `rating` field can be a label like "Beginner" or a
+  // numeric string. We only push numeric edits — clinic-style ratings
+  // (Beginner, etc.) are stored on a different table and skipped here.
+  const numericRating = /^[0-9.]+$/.test(player.rating) ? player.rating : "";
+  const [rating, setRating] = useState(numericRating);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function save(e: React.FormEvent) {
+    e.preventDefault();
+    setSaving(true);
+    setError(null);
+    try {
+      const payload: Record<string, unknown> = {
+        first_name: firstName.trim(),
+        last_name: lastName.trim(),
+      };
+      // phone: only send when changed from blank to something (we don't
+      // currently render the existing phone in the row, so changes here
+      // overwrite). Leaving blank in the input leaves phone untouched.
+      if (phone.trim()) payload.phone = phone.trim();
+      if (rating.trim()) payload.rating = Number(rating);
+
+      const res = await fetch(
+        `/api/admin/players?email=${encodeURIComponent(player.email)}`,
+        {
+          method: "PATCH",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(payload),
+        }
+      );
+      const body = await res.json();
+      if (!res.ok) throw new Error(body.error || "Failed to save");
+      onSaved();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <form
+      onSubmit={save}
+      className="mb-4 rounded-lg border border-emerald-900/60 bg-emerald-950/10 p-4"
+    >
+      <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-emerald-400">
+        Edit player (super-admin) — applies across every registration tied to {player.email}
+      </p>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div>
+          <label className="mb-1 block text-[10px] font-medium uppercase tracking-wider text-zinc-500">
+            First name
+          </label>
+          <input
+            value={firstName}
+            onChange={(e) => setFirstName(e.target.value)}
+            required
+            className="w-full rounded-md border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-white"
+          />
+        </div>
+        <div>
+          <label className="mb-1 block text-[10px] font-medium uppercase tracking-wider text-zinc-500">
+            Last name
+          </label>
+          <input
+            value={lastName}
+            onChange={(e) => setLastName(e.target.value)}
+            required
+            className="w-full rounded-md border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-white"
+          />
+        </div>
+        <div>
+          <label className="mb-1 block text-[10px] font-medium uppercase tracking-wider text-zinc-500">
+            Phone (leave blank to keep current)
+          </label>
+          <input
+            type="tel"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            placeholder="+18583349198"
+            className="w-full rounded-md border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-white"
+          />
+        </div>
+        <div>
+          <label className="mb-1 block text-[10px] font-medium uppercase tracking-wider text-zinc-500">
+            Rating (tournament players only)
+          </label>
+          <input
+            type="number"
+            min={0}
+            max={9}
+            step="0.1"
+            value={rating}
+            onChange={(e) => setRating(e.target.value)}
+            placeholder="4.0"
+            className="w-full rounded-md border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-white"
+          />
+        </div>
+      </div>
+      {error && <p className="mt-2 text-xs text-red-400">{error}</p>}
+      <div className="mt-3 flex justify-end gap-2">
+        <button
+          type="button"
+          onClick={onClose}
+          className="rounded-md border border-zinc-800 px-3 py-1 text-xs text-zinc-300 hover:border-zinc-700"
+        >
+          Cancel
+        </button>
+        <button
+          type="submit"
+          disabled={saving}
+          className="rounded-md bg-emerald-600 px-3 py-1 text-xs font-medium text-white hover:bg-emerald-500 disabled:opacity-60"
+        >
+          {saving ? "Saving…" : "Save"}
+        </button>
+      </div>
+    </form>
+  );
 }
