@@ -10,6 +10,7 @@ type PlayerRaw = {
   first_name: string;
   last_name: string;
   email: string;
+  phone: string | null;
   rating: number;
   user_id: string | null;
   confirmed_at: string | null;
@@ -28,6 +29,7 @@ type ClinicRegRaw = {
   first_name: string;
   last_name: string;
   email: string;
+  phone: string | null;
   rating_self: string;
   user_id: string | null;
   confirmed_at: string | null;
@@ -42,6 +44,7 @@ type LessonRequestRaw = {
   first_name: string;
   last_name: string;
   email: string;
+  phone: string | null;
   skill_level: string;
   user_id: string | null;
   confirmed_at: string | null;
@@ -55,6 +58,8 @@ export type PlayerAggregate = {
   email: string;
   first_name: string;
   last_name: string;
+  /** Phone from the most recent registration that recorded one; null if never provided. */
+  phone: string | null;
   /** Display string — numeric for tournament players, "Beginner" / number for clinics + lessons. */
   rating: string;
   has_account: boolean;
@@ -89,7 +94,7 @@ export default async function AdminPlayersPage({
   const playersQuery = admin
     .from("players")
     .select(
-      `id, first_name, last_name, email, rating, user_id, confirmed_at, created_at, workspace_id,
+      `id, first_name, last_name, email, phone, rating, user_id, confirmed_at, created_at, workspace_id,
        team:teams (
          id, status, registered_at,
          tournament:tournaments (id, slug, title)
@@ -99,14 +104,14 @@ export default async function AdminPlayersPage({
   const clinicQuery = admin
     .from("clinic_registrations")
     .select(
-      `id, first_name, last_name, email, rating_self, user_id, confirmed_at, registered_at, workspace_id, status,
+      `id, first_name, last_name, email, phone, rating_self, user_id, confirmed_at, registered_at, workspace_id, status,
        clinic:clinics (id, slug, title)`
     )
     .order("registered_at", { ascending: false });
   const lessonQuery = admin
     .from("lesson_requests")
     .select(
-      `id, first_name, last_name, email, skill_level, user_id, confirmed_at, created_at, workspace_id, status,
+      `id, first_name, last_name, email, phone, skill_level, user_id, confirmed_at, created_at, workspace_id, status,
        coach:coach_profiles (id, slug, display_name)`
     )
     .order("created_at", { ascending: false });
@@ -132,6 +137,7 @@ export default async function AdminPlayersPage({
       email: key,
       first_name: seed.first_name,
       last_name: seed.last_name,
+      phone: null,
       rating: seed.rating,
       has_account: false,
       registration_count: 0,
@@ -165,6 +171,9 @@ export default async function AdminPlayersPage({
       agg.first_name = p.first_name;
       agg.last_name = p.last_name;
       agg.rating = Number(p.rating).toFixed(1);
+      if (p.phone) agg.phone = p.phone;
+    } else if (!agg.phone && p.phone) {
+      agg.phone = p.phone;
     }
     noteWorkspace(agg, p.workspace_id);
     if (p.team?.tournament) {
@@ -197,6 +206,9 @@ export default async function AdminPlayersPage({
       agg.first_name = r.first_name;
       agg.last_name = r.last_name;
       agg.rating = ratingDisplay;
+      if (r.phone) agg.phone = r.phone;
+    } else if (!agg.phone && r.phone) {
+      agg.phone = r.phone;
     }
     noteWorkspace(agg, r.workspace_id);
     if (r.clinic) {
@@ -229,6 +241,9 @@ export default async function AdminPlayersPage({
       agg.first_name = lr.first_name;
       agg.last_name = lr.last_name;
       agg.rating = ratingDisplay;
+      if (lr.phone) agg.phone = lr.phone;
+    } else if (!agg.phone && lr.phone) {
+      agg.phone = lr.phone;
     }
     noteWorkspace(agg, lr.workspace_id);
     if (lr.coach) {

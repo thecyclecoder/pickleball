@@ -30,13 +30,22 @@ export function PlayersPanel({
       if (filter === "confirmed" && !p.has_account) return false;
       if (filter === "pending" && p.has_account) return false;
       if (!q) return true;
+      // Non-super-admins shouldn't be able to probe by email — restrict
+      // search to name fields when contact info is hidden.
+      if (isSuperAdmin) {
+        return (
+          p.email.includes(q) ||
+          (p.phone ?? "").toLowerCase().includes(q) ||
+          p.first_name.toLowerCase().includes(q) ||
+          p.last_name.toLowerCase().includes(q)
+        );
+      }
       return (
-        p.email.includes(q) ||
         p.first_name.toLowerCase().includes(q) ||
         p.last_name.toLowerCase().includes(q)
       );
     });
-  }, [players, search, filter]);
+  }, [players, search, filter, isSuperAdmin]);
 
   function deletePlayer(p: PlayerAggregate, ev: React.MouseEvent) {
     ev.stopPropagation();
@@ -62,21 +71,36 @@ export function PlayersPanel({
   }
 
   function exportCsv() {
-    const headers = ["First name", "Last name", "Email", "Rating", "Registrations", "Confirmed", "Workspaces", "Last registered"];
-    const rowsCsv = rows.map((p) =>
-      [
-        p.first_name,
-        p.last_name,
-        p.email,
-        p.rating,
-        String(p.registration_count),
-        p.has_account ? "Yes" : "No",
-        p.workspaces.map((w) => w.name).join("; "),
-        p.last_registered_at?.slice(0, 10) ?? "",
-      ]
-        .map(escapeCsv)
-        .join(",")
-    );
+    // Email and phone are super-admin-only — drop those columns for
+    // workspace admins so the CSV doesn't leak contact info.
+    const baseHeaders = ["First name", "Last name", "Rating", "Registrations", "Confirmed", "Workspaces", "Last registered"];
+    const headers = isSuperAdmin
+      ? ["First name", "Last name", "Email", "Phone", ...baseHeaders.slice(2)]
+      : baseHeaders;
+    const rowsCsv = rows.map((p) => {
+      const cols = isSuperAdmin
+        ? [
+            p.first_name,
+            p.last_name,
+            p.email,
+            p.phone ?? "",
+            p.rating,
+            String(p.registration_count),
+            p.has_account ? "Yes" : "No",
+            p.workspaces.map((w) => w.name).join("; "),
+            p.last_registered_at?.slice(0, 10) ?? "",
+          ]
+        : [
+            p.first_name,
+            p.last_name,
+            p.rating,
+            String(p.registration_count),
+            p.has_account ? "Yes" : "No",
+            p.workspaces.map((w) => w.name).join("; "),
+            p.last_registered_at?.slice(0, 10) ?? "",
+          ];
+      return cols.map(escapeCsv).join(",");
+    });
     const csv = [headers.map(escapeCsv).join(","), ...rowsCsv].join("\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
@@ -94,7 +118,7 @@ export function PlayersPanel({
           type="search"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search name or email"
+          placeholder={isSuperAdmin ? "Search name, email, or phone" : "Search name"}
           className="flex-1 min-w-[180px] rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-white focus:border-emerald-600 focus:outline-none"
         />
         <div className="flex items-center gap-0.5 rounded-md border border-zinc-800 bg-zinc-900 p-0.5 text-xs">
@@ -125,7 +149,12 @@ export function PlayersPanel({
           <thead className="border-b border-zinc-800 bg-zinc-950 text-xs uppercase tracking-wider text-zinc-500">
             <tr>
               <th className="px-5 py-3 text-left">Player</th>
-              <th className="hidden px-5 py-3 text-left md:table-cell">Email</th>
+              {isSuperAdmin && (
+                <th className="hidden px-5 py-3 text-left md:table-cell">Email</th>
+              )}
+              {isSuperAdmin && (
+                <th className="hidden px-5 py-3 text-left lg:table-cell">Phone</th>
+              )}
               <th className="px-5 py-3 text-left">Rating</th>
               <th className="px-5 py-3 text-left">Events</th>
               {showWorkspaceColumn && (
@@ -148,7 +177,14 @@ export function PlayersPanel({
                     <td className="px-5 py-3 font-medium text-white">
                       {p.first_name} {p.last_name}
                     </td>
-                    <td className="hidden px-5 py-3 text-zinc-400 md:table-cell">{p.email}</td>
+                    {isSuperAdmin && (
+                      <td className="hidden px-5 py-3 text-zinc-400 md:table-cell">{p.email}</td>
+                    )}
+                    {isSuperAdmin && (
+                      <td className="hidden px-5 py-3 text-zinc-400 lg:table-cell">
+                        {p.phone ?? "—"}
+                      </td>
+                    )}
                     <td className="px-5 py-3 text-zinc-400">{p.rating}</td>
                     <td className="px-5 py-3 text-zinc-400">{p.registration_count}</td>
                     {showWorkspaceColumn && (
@@ -202,10 +238,13 @@ export function PlayersPanel({
                   </tr>
                   {isOpen && (
                     <tr className="bg-zinc-950/40">
-                      <td colSpan={showWorkspaceColumn ? 8 : 7} className="px-5 py-4">
-                        <p className="mb-2 text-[10px] uppercase tracking-wider text-zinc-500 md:hidden">
-                          {p.email}
-                        </p>
+                      <td colSpan={7 + (isSuperAdmin ? 2 : 0) + (showWorkspaceColumn ? 1 : 0)} className="px-5 py-4">
+                        {isSuperAdmin && (
+                          <p className="mb-2 text-[10px] uppercase tracking-wider text-zinc-500 md:hidden">
+                            {p.email}
+                            {p.phone && <> · {p.phone}</>}
+                          </p>
+                        )}
                         {isSuperAdmin && editingEmail === p.email && (
                           <EditPlayerForm
                             player={p}
@@ -273,7 +312,7 @@ export function PlayersPanel({
             })}
             {rows.length === 0 && (
               <tr>
-                <td colSpan={showWorkspaceColumn ? 8 : 7} className="px-5 py-8 text-center text-sm text-zinc-500">
+                <td colSpan={7 + (isSuperAdmin ? 2 : 0) + (showWorkspaceColumn ? 1 : 0)} className="px-5 py-8 text-center text-sm text-zinc-500">
                   No players match your filter.
                 </td>
               </tr>
