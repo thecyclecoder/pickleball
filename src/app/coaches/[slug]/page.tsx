@@ -110,7 +110,7 @@ export default async function CoachDetailPage({
   const L =
     locale === "es"
       ? {
-          kicker: "Coach",
+          kicker: "Coach de Pickleball",
           back: "Todos los coaches",
           requestHeading: "Solicitar lección",
           notAccepting: "Este coach no está aceptando solicitudes en este momento.",
@@ -129,7 +129,7 @@ export default async function CoachDetailPage({
           languageEs: "Español",
         }
       : {
-          kicker: "Coach",
+          kicker: "Pickleball Coach",
           back: "All coaches",
           requestHeading: "Request a lesson",
           notAccepting: "This coach isn't accepting new requests right now.",
@@ -183,7 +183,7 @@ export default async function CoachDetailPage({
 
         <div className="mb-4 lg:hidden">
           <p className="mb-1.5 text-xs font-medium uppercase tracking-[0.15em] text-emerald-500">
-            {c.workspace?.name ?? L.kicker}
+            {L.kicker}
           </p>
           <h1 className="text-2xl font-bold leading-tight tracking-tight text-white">{name}</h1>
           {tagline && <p className="mt-2 text-sm text-zinc-400">{tagline}</p>}
@@ -201,7 +201,7 @@ export default async function CoachDetailPage({
           <div className="min-w-0">
             <div className="hidden lg:block">
               <p className="mb-2 text-xs font-medium uppercase tracking-[0.15em] text-emerald-500">
-                {c.workspace?.name ?? L.kicker}
+                {L.kicker}
               </p>
               <h1 className="mb-2 text-4xl font-bold leading-tight tracking-tight text-white">{name}</h1>
               {tagline && <p className="mb-6 text-base text-zinc-400">{tagline}</p>}
