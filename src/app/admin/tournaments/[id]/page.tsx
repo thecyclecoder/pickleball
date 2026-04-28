@@ -18,6 +18,7 @@ import type {
   Game,
 } from "@/lib/types";
 import { PoolsPanel } from "./pools-panel";
+import { PhoneCollectionTile } from "./phone-collection";
 
 export const dynamic = "force-dynamic";
 
@@ -83,6 +84,27 @@ export default async function AdminTournamentEditPage({
     (a, b) => a.sort_order - b.sort_order || a.number - b.number
   );
 
+  // Phone-collection stats. Dedupe by email since a player may be on
+  // multiple teams — we count people, not roster slots. A player counts
+  // as "with phone" if any of their rows in this tournament has one.
+  const activePlayers = tournament.teams
+    .filter((t) => t.status !== "cancelled")
+    .flatMap((t) => t.players);
+  const playerByEmail = new Map<string, { phone: string | null }>();
+  for (const p of activePlayers) {
+    const e = (p.email ?? "").toLowerCase();
+    if (!e) continue;
+    const existing = playerByEmail.get(e);
+    if (!existing || (!existing.phone && p.phone)) {
+      playerByEmail.set(e, { phone: p.phone ?? null });
+    }
+  }
+  const totalUniquePlayers = playerByEmail.size;
+  const playersWithPhone = Array.from(playerByEmail.values()).filter(
+    (p) => p.phone && p.phone.trim()
+  ).length;
+  const playersMissingPhone = totalUniquePlayers - playersWithPhone;
+
   const publicUrl = `/tournaments/${tournament.slug}`;
 
   return (
@@ -108,6 +130,17 @@ export default async function AdminTournamentEditPage({
           </Link>
         )}
       </div>
+
+      {totalUniquePlayers > 0 && (
+        <div className="mb-6">
+          <PhoneCollectionTile
+            tournamentId={tournament.id}
+            totalPlayers={totalUniquePlayers}
+            withPhone={playersWithPhone}
+            missingPhone={playersMissingPhone}
+          />
+        </div>
+      )}
 
       <RegistrationsPanel
         tournamentId={tournament.id}
