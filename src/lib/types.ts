@@ -336,6 +336,8 @@ export type LessonRequest = {
   updated_at: string;
 };
 
+export type LessonRequestReplyDirection = "outbound" | "inbound";
+
 export type LessonRequestReply = {
   id: string;
   lesson_request_id: string;
@@ -343,5 +345,10 @@ export type LessonRequestReply = {
   sender_user_id: string | null;
   sender_email: string;
   body: string;
+  /** "outbound" = sent by Buen Tiro on behalf of the coach;
+   *  "inbound"  = landed via the inbound webhook from either side. */
+  direction: LessonRequestReplyDirection;
+  email_message_id: string | null;
+  subject: string | null;
   created_at: string;
 };

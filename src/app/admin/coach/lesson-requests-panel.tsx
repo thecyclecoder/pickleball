@@ -256,23 +256,33 @@ export function LessonRequestsPanel({
                     {myReplies.length > 0 && (
                       <div>
                         <p className="mb-1.5 text-[10px] uppercase tracking-wider text-zinc-500">
-                          Your replies
+                          Conversation
                         </p>
                         <ul className="space-y-2">
-                          {myReplies.map((rep) => (
-                            <li
-                              key={rep.id}
-                              className="rounded-md border border-emerald-900/60 bg-emerald-950/20 px-3 py-2"
-                            >
-                              <p className="text-[10px] uppercase tracking-wider text-emerald-400">
-                                {rep.sender_email} ·{" "}
-                                {new Date(rep.created_at).toLocaleString()}
-                              </p>
-                              <p className="mt-1 whitespace-pre-wrap text-emerald-50">
-                                {rep.body}
-                              </p>
-                            </li>
-                          ))}
+                          {myReplies.map((rep) => {
+                            const isPlayer =
+                              rep.direction === "inbound" &&
+                              rep.sender_email.toLowerCase() === r.email.toLowerCase();
+                            const tone = isPlayer
+                              ? "border-zinc-800 bg-zinc-950/60"
+                              : "border-emerald-900/60 bg-emerald-950/20";
+                            const labelTone = isPlayer ? "text-zinc-400" : "text-emerald-400";
+                            const bodyTone = isPlayer ? "text-zinc-100" : "text-emerald-50";
+                            return (
+                              <li
+                                key={rep.id}
+                                className={`rounded-md border px-3 py-2 ${tone} ${
+                                  isPlayer ? "" : "ml-6"
+                                }`}
+                              >
+                                <p className={`text-[10px] uppercase tracking-wider ${labelTone}`}>
+                                  {isPlayer ? "Player" : "You"} · {rep.sender_email} ·{" "}
+                                  {new Date(rep.created_at).toLocaleString()}
+                                </p>
+                                <p className={`mt-1 whitespace-pre-wrap ${bodyTone}`}>{rep.body}</p>
+                              </li>
+                            );
+                          })}
                         </ul>
                       </div>
                     )}

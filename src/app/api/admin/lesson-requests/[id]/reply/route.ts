@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { requireMember } from "@/lib/api";
 import { getCurrentMembership, isSuperAdmin } from "@/lib/auth";
 import { sendLessonReplyEmail } from "@/lib/email";
+import { relayConfigured, replyAddressFor } from "@/lib/lesson-reply-token";
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireMember();
@@ -71,12 +72,17 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   } | null;
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://buentiro.app";
 
+  // Reply-To routing: when the relay is configured, send replies through
+  // it so any back-and-forth lands in the inbound webhook. Otherwise the
+  // coach's email is used as a direct fallback.
+  const replyTo = relayConfigured() ? replyAddressFor(reqRow.id) : senderEmail;
+
   try {
     await sendLessonReplyEmail({
       toEmail: reqRow.email,
       toFirstName: reqRow.first_name,
       coachName: coach?.display_name ?? "Your coach",
-      coachReplyToEmail: senderEmail,
+      replyToAddress: replyTo,
       body: message,
       coachUrl: coach?.slug ? `${siteUrl}/coaches/${coach.slug}` : siteUrl,
     });

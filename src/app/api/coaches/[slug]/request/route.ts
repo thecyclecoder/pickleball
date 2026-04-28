@@ -14,6 +14,7 @@ import {
   sendLessonRequestRequesterEmail,
 } from "@/lib/email";
 import { sendPushToUsers } from "@/lib/push-server";
+import { relayConfigured, replyAddressFor } from "@/lib/lesson-reply-token";
 
 type Body = {
   first_name?: string;
@@ -97,6 +98,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
     );
   }
 
+  // Reply-To routing: when the relay is configured, both the requester
+  // confirmation and the coach notification use the per-request relay
+  // address so any reply lands in the inbound webhook and gets captured.
+  const replyTo = relayConfigured() ? replyAddressFor(reqRow.id) : null;
+
   await Promise.all([
     sendRequesterConfirmation({
       coachName: coach.display_name,
@@ -115,12 +121,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
       coachName: coach.display_name,
       workspaceId: coach.workspace_id,
       requesterName: `${first} ${last}`,
-      requesterEmail: email,
-      requesterPhone: phone,
-      skill,
-      lessonType,
-      goals,
-      scheduleNotes,
+      replyToAddress: replyTo ?? email,
     }).catch((e) => console.error("Lesson req coach notify failed:", e)),
   ]);
 
@@ -164,12 +165,7 @@ async function notifyCoachWorkspace(args: {
   coachName: string;
   workspaceId: string;
   requesterName: string;
-  requesterEmail: string;
-  requesterPhone: string | null;
-  skill: string;
-  lessonType: LessonType | null;
-  goals: string | null;
-  scheduleNotes: string | null;
+  replyToAddress: string;
 }) {
   const admin = createAdminClient();
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://buentiro.app";
@@ -187,13 +183,10 @@ async function notifyCoachWorkspace(args: {
     .map((m) => m.email)
     .filter((e): e is string => !!e);
 
-  const skillLabel = args.skill === "beginner" ? "Beginner" : args.skill;
-  const lessonTypeLabelStr = args.lessonType ? lessonTypeLabel(args.lessonType, "en") : null;
-
   if (userIds.length > 0) {
     await sendPushToUsers(userIds, {
       title: `New lesson request: ${args.coachName}`,
-      body: `${args.requesterName} — ${skillLabel}${lessonTypeLabelStr ? ` · ${lessonTypeLabelStr}` : ""}`,
+      body: `${args.requesterName} requested a lesson — tap to reply`,
       tag: `lesson_request:${args.coachId}`,
       url: `/admin/coach`,
     }).catch((e) => console.error("[push] lesson req:", e));
@@ -205,13 +198,8 @@ async function notifyCoachWorkspace(args: {
         toEmail: to,
         coachName: args.coachName,
         requesterName: args.requesterName,
-        requesterEmail: args.requesterEmail,
-        requesterPhone: args.requesterPhone,
-        skillLevel: skillLabel,
-        lessonType: lessonTypeLabelStr,
-        goals: args.goals,
-        scheduleNotes: args.scheduleNotes,
         manageUrl: `${siteUrl}/admin/coach`,
+        replyToAddress: args.replyToAddress,
       }).catch((e) => console.error("Resend lesson req coach email failed:", e))
     )
   );

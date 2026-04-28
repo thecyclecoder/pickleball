@@ -494,43 +494,25 @@ type LessonCoachEmailArgs = {
   toEmail: string;
   coachName: string;
   requesterName: string;
-  requesterEmail: string;
-  requesterPhone: string | null;
-  skillLevel: string;
-  lessonType: string | null;
-  goals: string | null;
-  scheduleNotes: string | null;
   manageUrl: string;
+  /** Address replies should go to. When the lesson-reply relay is
+   *  configured this is `lr-<id>-<hmac>@replies.buentiro.app` so the
+   *  player and coach correspond through Buen Tiro and the thread
+   *  is captured. Otherwise the requester's email is used as a
+   *  direct fallback. */
+  replyToAddress: string;
 };
 
 export async function sendLessonRequestCoachEmail(
   args: LessonCoachEmailArgs
 ): Promise<void> {
-  const {
-    coachName,
-    requesterName,
-    requesterEmail,
-    requesterPhone,
-    skillLevel,
-    lessonType,
-    goals,
-    scheduleNotes,
-    manageUrl,
-  } = args;
-  // Reply-To set to the requester so the coach can just hit Reply in
-  // their email client and the message goes straight to the player.
-  // Note: when set, replies bypass Buen Tiro entirely, so we can't auto-
-  // detect them via webhook — status changes still go through the
-  // /admin/coach panel.
+  const { coachName, requesterName, manageUrl, replyToAddress } = args;
+  // The notification deliberately omits the player's email/phone/goals
+  // — those live in /admin/coach. Stripping them nudges the coach to
+  // reply through the platform, where the thread is captured and the
+  // status auto-updates.
   const subject = `New lesson request from ${requesterName}`;
   const headline = `New lesson request`;
-  const intro = `Hi ${escapeHtml(coachName)}, <strong>${escapeHtml(requesterName)}</strong> just requested a lesson. Reply to <a href="mailto:${requesterEmail}" style="color:#34d399;">${escapeHtml(requesterEmail)}</a> to schedule a time.`;
-
-  const detailRow = (label: string, value: string) => `
-    <tr><td style="padding:0 16px 14px;">
-      <div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#71717a;">${label}</div>
-      <div style="font-size:14px;color:#fafafa;margin-top:2px;white-space:pre-wrap;">${escapeHtml(value)}</div>
-    </td></tr>`;
 
   const html = `<!doctype html>
 <html><head><meta charset="utf-8" /><title>${escapeHtml(subject)}</title></head>
@@ -544,25 +526,15 @@ export async function sendLessonRequestCoachEmail(
         </td></tr>
         <tr><td style="padding:0 28px 8px;">
           <h1 style="margin:0 0 8px;font-size:22px;line-height:1.25;color:#fafafa;font-weight:700;">${escapeHtml(headline)}</h1>
-          <p style="margin:0 0 16px;font-size:14px;line-height:1.55;color:#a1a1aa;">${intro}</p>
+          <p style="margin:0 0 8px;font-size:16px;line-height:1.55;color:#fafafa;">Hi ${escapeHtml(coachName)},</p>
+          <p style="margin:0 0 20px;font-size:16px;line-height:1.55;color:#a1a1aa;"><strong style="color:#fafafa;">${escapeHtml(requesterName)}</strong> just requested a lesson with you.</p>
         </td></tr>
         <tr><td style="padding:0 28px 16px;">
-          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#09090b;border:1px solid #27272a;border-radius:12px;">
-            <tr><td style="padding:14px 16px 14px;">
-              <div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#71717a;">Email</div>
-              <div style="font-size:14px;color:#fafafa;margin-top:2px;"><a href="mailto:${requesterEmail}" style="color:#34d399;text-decoration:none;">${escapeHtml(requesterEmail)}</a></div>
-            </td></tr>
-            ${requesterPhone ? detailRow("Phone", requesterPhone) : ""}
-            ${detailRow("Skill level", skillLevel)}
-            ${lessonType ? detailRow("Lesson type", lessonType) : ""}
-            ${goals ? detailRow("Goals", goals) : ""}
-            ${scheduleNotes ? detailRow("Schedule notes", scheduleNotes) : ""}
-          </table>
+          <a href="${manageUrl}" style="display:inline-block;background:#10b981;color:#ffffff;text-decoration:none;font-weight:600;font-size:15px;padding:14px 28px;border-radius:10px;">View &amp; reply in Buen Tiro</a>
         </td></tr>
-        <tr><td style="padding:0 28px 12px;">
-          <a href="${manageUrl}" style="display:inline-block;background:#10b981;color:#ffffff;text-decoration:none;font-weight:600;font-size:14px;padding:12px 22px;border-radius:10px;">Manage in admin</a>
+        <tr><td style="padding:0 28px 28px;">
+          <p style="margin:0;font-size:13px;color:#71717a;line-height:1.55;">Replying through Buen Tiro keeps the conversation tracked in one place — every message is saved on the request, status updates automatically, and you don't have to rummage through your inbox to find it later.</p>
         </td></tr>
-        <tr><td style="padding:16px 28px 28px;"></td></tr>
       </table>
       <p style="margin:16px 0 0;font-size:11px;color:#52525b;">Buen Tiro · <a href="${SITE_URL}" style="color:#52525b;text-decoration:none;">buentiro.app</a></p>
     </td></tr>
@@ -571,19 +543,20 @@ export async function sendLessonRequestCoachEmail(
 
   const text = `${headline}
 
-${requesterName} just requested a lesson.
+Hi ${coachName},
 
-Email: ${requesterEmail}
-${requesterPhone ? `Phone: ${requesterPhone}\n` : ""}Skill level: ${skillLevel}
-${lessonType ? `Lesson type: ${lessonType}\n` : ""}${goals ? `Goals: ${goals}\n` : ""}${scheduleNotes ? `Schedule notes: ${scheduleNotes}\n` : ""}
-Manage in admin: ${manageUrl}
+${requesterName} just requested a lesson with you.
+
+View & reply in Buen Tiro: ${manageUrl}
+
+Replying through Buen Tiro keeps the conversation tracked in one place — every message is saved on the request, status updates automatically.
 
 — Buen Tiro (${SITE_URL})`;
 
   const { error } = await resend().emails.send({
     from: FROM,
     to: args.toEmail,
-    replyTo: requesterEmail,
+    replyTo: replyToAddress,
     subject,
     html,
     text,
@@ -595,13 +568,16 @@ type LessonReplyEmailArgs = {
   toEmail: string;
   toFirstName: string;
   coachName: string;
-  coachReplyToEmail: string;
+  /** Reply-To header value. Same address-routing rule as the coach
+   *  notification: relay address when configured, direct coach email
+   *  otherwise. */
+  replyToAddress: string;
   body: string;
   coachUrl: string;
 };
 
 export async function sendLessonReplyEmail(args: LessonReplyEmailArgs): Promise<void> {
-  const { toEmail, toFirstName, coachName, coachReplyToEmail, body, coachUrl } = args;
+  const { toEmail, toFirstName, coachName, replyToAddress, body, coachUrl } = args;
   const subject = `${coachName} replied to your lesson request`;
   const headline = `${coachName} replied to your lesson request`;
 
@@ -649,12 +625,99 @@ Coach profile: ${coachUrl}
   const { error } = await resend().emails.send({
     from: FROM,
     to: toEmail,
-    replyTo: coachReplyToEmail,
+    replyTo: replyToAddress,
     subject,
     html,
     text,
   });
   if (error) console.error("Resend send error (lesson reply):", error, "to:", toEmail);
+}
+
+/**
+ * "Forwarded" email — used by the inbound webhook to relay a captured
+ * message between player and coach. Same shape as a normal reply but
+ * with a sender attribution at the top so the recipient sees who wrote
+ * it (since we're sending from no-reply@buentiro.app).
+ */
+type LessonForwardEmailArgs = {
+  toEmail: string;
+  toFirstName: string;
+  fromName: string;
+  fromEmail: string;
+  replyToAddress: string;
+  body: string;
+  manageUrl: string;
+  /** Phrasing differs slightly when forwarding to the coach vs the player. */
+  audience: "coach" | "player";
+};
+
+export async function sendLessonForwardEmail(args: LessonForwardEmailArgs): Promise<void> {
+  const { toEmail, toFirstName, fromName, fromEmail, replyToAddress, body, manageUrl, audience } = args;
+  const subject =
+    audience === "coach"
+      ? `${fromName} replied to their lesson request`
+      : `${fromName} replied`;
+  const headline =
+    audience === "coach"
+      ? `${fromName} replied`
+      : `${fromName} replied`;
+  const intro =
+    audience === "coach"
+      ? `Hi ${escapeHtml(toFirstName)}, ${escapeHtml(fromName)} just sent you a message about their lesson request:`
+      : `Hi ${escapeHtml(toFirstName)}, ${escapeHtml(fromName)} sent you the following:`;
+
+  const html = `<!doctype html>
+<html><head><meta charset="utf-8" /><title>${escapeHtml(subject)}</title></head>
+<body style="margin:0;padding:0;background:#09090b;color:#fafafa;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#09090b;padding:24px 16px;">
+    <tr><td align="center">
+      <table role="presentation" width="560" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;width:100%;background:#18181b;border:1px solid #27272a;border-radius:16px;overflow:hidden;">
+        <tr><td style="padding:28px 28px 16px;">
+          <div style="font-size:20px;font-weight:700;letter-spacing:-0.5px;color:#fafafa;">Buen Tiro</div>
+          <div style="height:2px;width:40px;background:#10b981;border-radius:2px;margin-top:6px;"></div>
+        </td></tr>
+        <tr><td style="padding:0 28px 8px;">
+          <h1 style="margin:0 0 8px;font-size:22px;line-height:1.25;color:#fafafa;font-weight:700;">${escapeHtml(headline)}</h1>
+          <p style="margin:0 0 16px;font-size:14px;line-height:1.55;color:#a1a1aa;">${intro}</p>
+        </td></tr>
+        <tr><td style="padding:0 28px 16px;">
+          <div style="background:#09090b;border:1px solid #27272a;border-radius:12px;padding:16px;font-size:14px;line-height:1.6;color:#fafafa;white-space:pre-wrap;">${escapeHtml(body)}</div>
+          <p style="margin:8px 0 0;font-size:11px;color:#52525b;">From ${escapeHtml(fromEmail)}</p>
+        </td></tr>
+        <tr><td style="padding:0 28px 12px;">
+          <p style="margin:0 0 12px;font-size:13px;color:#a1a1aa;line-height:1.55;">Reply to this email and your message will be delivered through Buen Tiro — your conversation stays threaded.</p>
+          <a href="${manageUrl}" style="display:inline-block;background:#10b981;color:#ffffff;text-decoration:none;font-weight:600;font-size:14px;padding:12px 22px;border-radius:10px;">${audience === "coach" ? "Open in Buen Tiro" : "View on Buen Tiro"}</a>
+        </td></tr>
+        <tr><td style="padding:16px 28px 28px;"></td></tr>
+      </table>
+      <p style="margin:16px 0 0;font-size:11px;color:#52525b;">Buen Tiro · <a href="${SITE_URL}" style="color:#52525b;text-decoration:none;">buentiro.app</a></p>
+    </td></tr>
+  </table>
+</body></html>`;
+
+  const text = `${headline}
+
+${stripHtml(intro)}
+
+${body}
+
+From ${fromEmail}
+
+Reply to this email and your message will be delivered through Buen Tiro — your conversation stays threaded.
+
+Open: ${manageUrl}
+
+— Buen Tiro (${SITE_URL})`;
+
+  const { error } = await resend().emails.send({
+    from: FROM,
+    to: toEmail,
+    replyTo: replyToAddress,
+    subject,
+    html,
+    text,
+  });
+  if (error) console.error("Resend send error (lesson forward):", error, "to:", toEmail);
 }
 
 function escapeHtml(s: string): string {

@@ -231,7 +231,32 @@ NEXT_PUBLIC_SUPABASE_URL=https://jfpeyuwffumrlkokejha.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon key>
 SUPABASE_SERVICE_ROLE_KEY=<service role key>
 NEXT_PUBLIC_SITE_URL=<vercel URL or custom domain>
+
+# Lesson-request inbound relay (optional). When set, lesson-request
+# emails use a per-request relay address as Reply-To so player↔coach
+# replies land in our webhook and get captured in the conversation
+# thread. Without these, replies fall back to direct (off-platform).
+LESSON_REPLY_RELAY_DOMAIN=replies.buentiro.app
+LESSON_REPLY_TOKEN_SECRET=<random 32-byte hex>
+RESEND_INBOUND_SECRET=<random; pasted into Resend webhook URL or header>
 ```
+
+## Lesson-request inbound relay setup
+
+The relay turns Buen Tiro into a mini CRM for coaches: every reply
+between player and coach is captured in `lesson_request_replies` and
+forwarded to the other party. Reply-To on outbound emails points at
+`lr-<idShort>-<hmac>@replies.buentiro.app`. To enable:
+
+1. Pick a subdomain (e.g. `replies.buentiro.app`).
+2. In Resend, create an inbound endpoint on that subdomain. Resend
+   will give you MX records — add them in Vercel DNS for the subdomain.
+3. Configure the webhook to POST to:
+   `https://buentiro.app/api/webhooks/resend-inbound?secret=<RESEND_INBOUND_SECRET>`
+4. Set `LESSON_REPLY_RELAY_DOMAIN`, `LESSON_REPLY_TOKEN_SECRET`, and
+   `RESEND_INBOUND_SECRET` in Vercel. Until they're all set, the
+   relay code paths short-circuit and emails use the direct Reply-To
+   fallback (current behavior).
 
 ## Database Access (CLI)
 
