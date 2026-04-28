@@ -382,6 +382,185 @@ export async function sendClinicRegistrationEmail(args: ClinicEmailArgs): Promis
   }
 }
 
+type LessonRequesterEmailArgs = {
+  toEmail: string;
+  toFirstName: string;
+  coachName: string;
+  coachUrl: string;
+  confirmLink: string;
+  skillLevel: string;
+  lessonType: string | null;
+};
+
+export async function sendLessonRequestRequesterEmail(
+  args: LessonRequesterEmailArgs
+): Promise<void> {
+  const { toFirstName, coachName, coachUrl, confirmLink, skillLevel, lessonType } = args;
+  const subject = `Your lesson request to ${coachName}`;
+  const headline = `Your lesson request is in`;
+  const intro = `Hi ${toFirstName}, we sent your lesson request to <strong>${escapeHtml(coachName)}</strong>. They'll reach out to schedule a time. Click below to sign in and track this on your profile — no password needed.`;
+
+  const detailRow = (label: string, value: string) => `
+    <tr><td style="padding:0 16px 14px;">
+      <div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#71717a;">${label}</div>
+      <div style="font-size:14px;color:#fafafa;margin-top:2px;">${escapeHtml(value)}</div>
+    </td></tr>`;
+
+  const html = `<!doctype html>
+<html><head><meta charset="utf-8" /><title>${escapeHtml(subject)}</title></head>
+<body style="margin:0;padding:0;background:#09090b;color:#fafafa;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#09090b;padding:24px 16px;">
+    <tr><td align="center">
+      <table role="presentation" width="560" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;width:100%;background:#18181b;border:1px solid #27272a;border-radius:16px;overflow:hidden;">
+        <tr><td style="padding:28px 28px 16px;">
+          <div style="font-size:20px;font-weight:700;letter-spacing:-0.5px;color:#fafafa;">Buen Tiro</div>
+          <div style="height:2px;width:40px;background:#10b981;border-radius:2px;margin-top:6px;"></div>
+        </td></tr>
+        <tr><td style="padding:0 28px 8px;">
+          <h1 style="margin:0 0 8px;font-size:22px;line-height:1.25;color:#fafafa;font-weight:700;">${escapeHtml(headline)}</h1>
+          <p style="margin:0 0 16px;font-size:14px;line-height:1.55;color:#a1a1aa;">${intro}</p>
+        </td></tr>
+        <tr><td style="padding:0 28px 16px;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#09090b;border:1px solid #27272a;border-radius:12px;">
+            <tr><td style="padding:14px 16px 0;">
+              <div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#71717a;">Coach</div>
+              <div style="font-size:14px;color:#fafafa;margin-top:2px;">${escapeHtml(coachName)}</div>
+            </td></tr>
+            <tr><td style="padding:14px 16px 0;">
+              <div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#71717a;">Skill level</div>
+              <div style="font-size:14px;color:#fafafa;margin-top:2px;">${escapeHtml(skillLevel)}</div>
+            </td></tr>
+            ${lessonType ? detailRow("Lesson type", lessonType) : ""}
+          </table>
+        </td></tr>
+        <tr><td style="padding:0 28px 12px;">
+          <a href="${confirmLink}" style="display:inline-block;background:#10b981;color:#ffffff;text-decoration:none;font-weight:600;font-size:14px;padding:12px 22px;border-radius:10px;">Sign in & track this</a>
+        </td></tr>
+        <tr><td style="padding:16px 28px 28px;">
+          <p style="margin:0;font-size:12px;color:#71717a;line-height:1.55;">Coach profile: <a href="${coachUrl}" style="color:#34d399;text-decoration:none;">${escapeHtml(coachUrl)}</a></p>
+        </td></tr>
+      </table>
+      <p style="margin:16px 0 0;font-size:11px;color:#52525b;">Buen Tiro · <a href="${SITE_URL}" style="color:#52525b;text-decoration:none;">buentiro.app</a></p>
+    </td></tr>
+  </table>
+</body></html>`;
+
+  const text = `${headline}
+
+We sent your lesson request to ${coachName}. They'll reach out to schedule a time.
+
+Skill level: ${skillLevel}
+${lessonType ? `Lesson type: ${lessonType}\n` : ""}
+Sign in & track this: ${confirmLink}
+Coach profile: ${coachUrl}
+
+— Buen Tiro (${SITE_URL})`;
+
+  const { error } = await resend().emails.send({
+    from: FROM,
+    to: args.toEmail,
+    subject,
+    html,
+    text,
+  });
+  if (error) console.error("Resend send error (lesson req requester):", error, "to:", args.toEmail);
+}
+
+type LessonCoachEmailArgs = {
+  toEmail: string;
+  coachName: string;
+  requesterName: string;
+  requesterEmail: string;
+  requesterPhone: string | null;
+  skillLevel: string;
+  lessonType: string | null;
+  goals: string | null;
+  scheduleNotes: string | null;
+  manageUrl: string;
+};
+
+export async function sendLessonRequestCoachEmail(
+  args: LessonCoachEmailArgs
+): Promise<void> {
+  const {
+    coachName,
+    requesterName,
+    requesterEmail,
+    requesterPhone,
+    skillLevel,
+    lessonType,
+    goals,
+    scheduleNotes,
+    manageUrl,
+  } = args;
+  const subject = `New lesson request from ${requesterName}`;
+  const headline = `New lesson request`;
+  const intro = `Hi ${escapeHtml(coachName)}, <strong>${escapeHtml(requesterName)}</strong> just requested a lesson. Reply to <a href="mailto:${requesterEmail}" style="color:#34d399;">${escapeHtml(requesterEmail)}</a> to schedule a time.`;
+
+  const detailRow = (label: string, value: string) => `
+    <tr><td style="padding:0 16px 14px;">
+      <div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#71717a;">${label}</div>
+      <div style="font-size:14px;color:#fafafa;margin-top:2px;white-space:pre-wrap;">${escapeHtml(value)}</div>
+    </td></tr>`;
+
+  const html = `<!doctype html>
+<html><head><meta charset="utf-8" /><title>${escapeHtml(subject)}</title></head>
+<body style="margin:0;padding:0;background:#09090b;color:#fafafa;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#09090b;padding:24px 16px;">
+    <tr><td align="center">
+      <table role="presentation" width="560" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;width:100%;background:#18181b;border:1px solid #27272a;border-radius:16px;overflow:hidden;">
+        <tr><td style="padding:28px 28px 16px;">
+          <div style="font-size:20px;font-weight:700;letter-spacing:-0.5px;color:#fafafa;">Buen Tiro</div>
+          <div style="height:2px;width:40px;background:#10b981;border-radius:2px;margin-top:6px;"></div>
+        </td></tr>
+        <tr><td style="padding:0 28px 8px;">
+          <h1 style="margin:0 0 8px;font-size:22px;line-height:1.25;color:#fafafa;font-weight:700;">${escapeHtml(headline)}</h1>
+          <p style="margin:0 0 16px;font-size:14px;line-height:1.55;color:#a1a1aa;">${intro}</p>
+        </td></tr>
+        <tr><td style="padding:0 28px 16px;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#09090b;border:1px solid #27272a;border-radius:12px;">
+            <tr><td style="padding:14px 16px 14px;">
+              <div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#71717a;">Email</div>
+              <div style="font-size:14px;color:#fafafa;margin-top:2px;"><a href="mailto:${requesterEmail}" style="color:#34d399;text-decoration:none;">${escapeHtml(requesterEmail)}</a></div>
+            </td></tr>
+            ${requesterPhone ? detailRow("Phone", requesterPhone) : ""}
+            ${detailRow("Skill level", skillLevel)}
+            ${lessonType ? detailRow("Lesson type", lessonType) : ""}
+            ${goals ? detailRow("Goals", goals) : ""}
+            ${scheduleNotes ? detailRow("Schedule notes", scheduleNotes) : ""}
+          </table>
+        </td></tr>
+        <tr><td style="padding:0 28px 12px;">
+          <a href="${manageUrl}" style="display:inline-block;background:#10b981;color:#ffffff;text-decoration:none;font-weight:600;font-size:14px;padding:12px 22px;border-radius:10px;">Manage in admin</a>
+        </td></tr>
+        <tr><td style="padding:16px 28px 28px;"></td></tr>
+      </table>
+      <p style="margin:16px 0 0;font-size:11px;color:#52525b;">Buen Tiro · <a href="${SITE_URL}" style="color:#52525b;text-decoration:none;">buentiro.app</a></p>
+    </td></tr>
+  </table>
+</body></html>`;
+
+  const text = `${headline}
+
+${requesterName} just requested a lesson.
+
+Email: ${requesterEmail}
+${requesterPhone ? `Phone: ${requesterPhone}\n` : ""}Skill level: ${skillLevel}
+${lessonType ? `Lesson type: ${lessonType}\n` : ""}${goals ? `Goals: ${goals}\n` : ""}${scheduleNotes ? `Schedule notes: ${scheduleNotes}\n` : ""}
+Manage in admin: ${manageUrl}
+
+— Buen Tiro (${SITE_URL})`;
+
+  const { error } = await resend().emails.send({
+    from: FROM,
+    to: args.toEmail,
+    subject,
+    html,
+    text,
+  });
+  if (error) console.error("Resend send error (lesson req coach):", error, "to:", args.toEmail);
+}
+
 function escapeHtml(s: string): string {
   return s
     .replace(/&/g, "&amp;")

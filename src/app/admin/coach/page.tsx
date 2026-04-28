@@ -1,7 +1,9 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentMembership } from "@/lib/auth";
 import { CoachProfileForm } from "./coach-profile-form";
-import type { CoachProfile } from "@/lib/types";
+import { CoachShareLinks } from "./coach-share-links";
+import { LessonRequestsPanel } from "./lesson-requests-panel";
+import type { CoachProfile, LessonRequest } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -17,9 +19,19 @@ export default async function AdminCoachPage() {
     .maybeSingle();
   const profile = (data ?? null) as CoachProfile | null;
 
+  let requests: LessonRequest[] = [];
+  if (profile) {
+    const { data: reqs } = await admin
+      .from("lesson_requests")
+      .select("*")
+      .eq("coach_profile_id", profile.id)
+      .order("created_at", { ascending: false });
+    requests = (reqs ?? []) as LessonRequest[];
+  }
+
   return (
-    <div>
-      <div className="mb-6">
+    <div className="space-y-6">
+      <div>
         <h1 className="text-2xl font-bold tracking-tight text-white">Coach profile</h1>
         <p className="mt-1 text-sm text-zinc-400">
           The public-facing profile for this workspace. When published, it shows up on{" "}
@@ -27,6 +39,11 @@ export default async function AdminCoachPage() {
           Skip this if your workspace only runs tournaments and clinics.
         </p>
       </div>
+
+      {profile && <CoachShareLinks slug={profile.slug} status={profile.status} />}
+
+      {profile && <LessonRequestsPanel requests={requests} />}
+
       <CoachProfileForm initial={profile} />
     </div>
   );

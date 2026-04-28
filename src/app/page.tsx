@@ -5,7 +5,24 @@ import { getLocale, pick, t } from "@/lib/i18n";
 import { PublicHeader } from "@/components/public-header";
 import { PublicFooter } from "@/components/public-footer";
 import { RotatingWord } from "@/components/rotating-word";
-import { largestSrc, srcSetAttr, type TournamentImage } from "@/lib/types";
+import {
+  largestSrc,
+  lessonTypeLabel,
+  srcSetAttr,
+  type LessonType,
+  type TournamentImage,
+} from "@/lib/types";
+
+type CoachCard = {
+  id: string;
+  slug: string;
+  display_name: string;
+  display_name_es: string | null;
+  tagline: string | null;
+  tagline_es: string | null;
+  avatar_url: string | null;
+  lesson_types: LessonType[];
+};
 
 export const dynamic = "force-dynamic";
 
@@ -29,7 +46,7 @@ export default async function Home() {
   const admin = createAdminClient();
   const today = new Date().toISOString().slice(0, 10);
 
-  const [{ data: tournaments }, { data: clinics }] = await Promise.all([
+  const [{ data: tournaments }, { data: clinics }, { data: coaches }] = await Promise.all([
     admin
       .from("tournaments")
       .select(
@@ -48,7 +65,17 @@ export default async function Home() {
       .gte("start_date", today)
       .order("start_date", { ascending: true })
       .limit(6),
+    admin
+      .from("coach_profiles")
+      .select(
+        "id, slug, display_name, display_name_es, tagline, tagline_es, avatar_url, lesson_types"
+      )
+      .eq("status", "published")
+      .eq("accepting_requests", true)
+      .order("updated_at", { ascending: false })
+      .limit(6),
   ]);
+  const coachCards = (coaches ?? []) as CoachCard[];
 
   const events: EventCard[] = [
     ...(tournaments ?? []).map((tt) => ({
@@ -85,19 +112,29 @@ export default async function Home() {
           eventsHeading: "Próximos eventos",
           eventsAll: "Ver torneos →",
           eventsClinics: "Ver clínicas →",
+          coachesHeading: "Coaches",
+          coachesAll: "Ver coaches →",
           tournament: "Torneo",
           clinic: "Clínica",
+          coach: "Coach",
           findYourNext: "Encuentra tu próximo",
+          findCoaches: "Encuentra un coach",
           rotatingWords: ["torneo", "partido", "lección", "evento"],
+          viewCoaches: "Ver coaches",
         }
       : {
           eventsHeading: "Upcoming events",
           eventsAll: "All tournaments →",
           eventsClinics: "All clinics →",
+          coachesHeading: "Coaches",
+          coachesAll: "All coaches →",
           tournament: "Tournament",
           clinic: "Clinic",
+          coach: "Coach",
           findYourNext: "Find your next",
+          findCoaches: "Find a coach",
           rotatingWords: ["tournament", "clinic", "lesson", "match"],
+          viewCoaches: "View coaches",
         };
 
   return (
@@ -126,6 +163,12 @@ export default async function Home() {
             className="rounded-lg border border-zinc-800 bg-zinc-900 px-6 py-3 text-sm font-medium text-zinc-200 transition-colors hover:border-zinc-700 hover:text-white"
           >
             {locale === "es" ? "Ver clínicas" : "View clinics"}
+          </Link>
+          <Link
+            href="/coaches"
+            className="rounded-lg border border-zinc-800 bg-zinc-900 px-6 py-3 text-sm font-medium text-zinc-200 transition-colors hover:border-zinc-700 hover:text-white"
+          >
+            {L.viewCoaches}
           </Link>
         </div>
       </section>
@@ -189,6 +232,66 @@ export default async function Home() {
                     </p>
                   </div>
                 </Link>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {coachCards.length > 0 && (
+        <section className="border-t border-zinc-900 bg-zinc-950">
+          <div className="mx-auto max-w-5xl px-4 py-12 sm:px-6 sm:py-16">
+            <div className="mb-6 flex items-baseline justify-between gap-3">
+              <h2 className="text-xl font-semibold text-white">{L.coachesHeading}</h2>
+              <Link href="/coaches" className="text-sm text-emerald-500 hover:text-emerald-400">
+                {L.coachesAll}
+              </Link>
+            </div>
+            <div className="grid items-start gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {coachCards.map((c) => {
+                const name = pick<string>(c.display_name, c.display_name_es ?? "", locale);
+                const tagline = pick<string>(c.tagline ?? "", c.tagline_es ?? "", locale);
+                return (
+                  <Link
+                    key={c.id}
+                    href={`/coaches/${c.slug}`}
+                    className="group flex items-center gap-3 overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900 p-4 transition-colors hover:border-emerald-600"
+                  >
+                    {c.avatar_url ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={c.avatar_url}
+                        alt={name}
+                        className="h-14 w-14 flex-shrink-0 rounded-full object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-full bg-zinc-800 text-sm font-semibold text-zinc-400">
+                        {name
+                          .split(" ")
+                          .map((p) => p[0])
+                          .filter(Boolean)
+                          .slice(0, 2)
+                          .join("")
+                          .toUpperCase()}
+                      </div>
+                    )}
+                    <div className="min-w-0">
+                      <p className="mb-0.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-emerald-500">
+                        {L.coach}
+                      </p>
+                      <h3 className="truncate text-sm font-medium text-white group-hover:text-emerald-400">
+                        {name}
+                      </h3>
+                      {tagline ? (
+                        <p className="truncate text-xs text-zinc-500">{tagline}</p>
+                      ) : c.lesson_types?.length ? (
+                        <p className="truncate text-xs text-zinc-500">
+                          {c.lesson_types.map((lt) => lessonTypeLabel(lt, locale)).join(" · ")}
+                        </p>
+                      ) : null}
+                    </div>
+                  </Link>
                 );
               })}
             </div>

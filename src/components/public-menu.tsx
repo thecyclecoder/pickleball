@@ -70,6 +70,8 @@ export function PublicMenu({
       ? {
           open: "Abrir menú",
           tournaments: "Torneos",
+          clinics: "Clínicas",
+          coaches: "Coaches",
           me: "Mi perfil",
           signIn: "Entrar",
           admin: "Admin",
@@ -81,6 +83,8 @@ export function PublicMenu({
       : {
           open: "Open menu",
           tournaments: "Tournaments",
+          clinics: "Clinics",
+          coaches: "Coaches",
           me: "My profile",
           signIn: "Sign in",
           admin: "Admin",
@@ -120,6 +124,12 @@ export function PublicMenu({
           <ul className="py-1 text-sm">
             <Item href="/tournaments" onNavigate={() => setOpen(false)}>
               {T.tournaments}
+            </Item>
+            <Item href="/clinics" onNavigate={() => setOpen(false)}>
+              {T.clinics}
+            </Item>
+            <Item href="/coaches" onNavigate={() => setOpen(false)}>
+              {T.coaches}
             </Item>
             {signedIn ? (
               <Item href="/me" onNavigate={() => setOpen(false)}>
