@@ -31,14 +31,19 @@ export default async function AdminTournamentEditPage({
   const { id } = await params;
   const admin = createAdminClient();
 
+  // Pools and games reference categories, not tournaments — they have to
+  // ride along inside the categories embed since PostgREST can't infer a
+  // direct relationship to the tournament row.
   const { data } = await admin
     .from("tournaments")
     .select(
       `*,
-       categories:tournament_categories (*),
+       categories:tournament_categories (
+         *,
+         pools:tournament_pools (*),
+         games (*)
+       ),
        courts:tournament_courts (*),
-       pools:tournament_pools (*),
-       games (*),
        teams (*, players (*))`
     )
     .eq("id", id)
@@ -48,10 +53,11 @@ export default async function AdminTournamentEditPage({
 
   if (!data) notFound();
   const tournament = data as Tournament & {
-    categories: TournamentCategory[];
+    categories: (TournamentCategory & {
+      pools: TournamentPool[];
+      games: Game[];
+    })[];
     courts: TournamentCourt[];
-    pools: TournamentPool[];
-    games: Game[];
     teams: (Team & { players: Player[] })[];
   };
 
@@ -61,9 +67,9 @@ export default async function AdminTournamentEditPage({
     .sort((a, b) => a.sort_order - b.sort_order || a.type.localeCompare(b.type))
     .map((c) => ({
       ...c,
-      pools: tournament.pools.filter((p) => p.category_id === c.id),
+      pools: c.pools ?? [],
       teams: tournament.teams.filter((t) => t.category_id === c.id),
-      games: tournament.games.filter((g) => g.category_id === c.id),
+      games: c.games ?? [],
     }));
 
   const { data: formatRows } = await admin

@@ -119,15 +119,20 @@ export default async function TournamentDetailPage({
   const admin = createAdminClient();
   const isUuid = /^[0-9a-f-]{36}$/i.test(id);
 
+  // Pools and games are nested under categories because their FKs point
+  // at tournament_categories, not at tournaments directly.
   const query = admin
     .from("tournaments")
     .select(
       `*,
        workspace:workspaces (id, name, payment_info),
-       categories:tournament_categories (*, format:tournament_formats (*)),
+       categories:tournament_categories (
+         *,
+         format:tournament_formats (*),
+         pools:tournament_pools (*),
+         games (*)
+       ),
        courts:tournament_courts (*),
-       pools:tournament_pools (*),
-       games (*),
        teams (
          *,
          players (*)
@@ -139,10 +144,11 @@ export default async function TournamentDetailPage({
   const tour = data?.[0] as
     | (Tournament & {
         workspace: Pick<Workspace, "id" | "name" | "payment_info">;
-        categories: LoadedCategory[];
+        categories: (LoadedCategory & {
+          pools: TournamentPool[];
+          games: Game[];
+        })[];
         courts: TournamentCourt[];
-        pools: TournamentPool[];
-        games: Game[];
         teams: LoadedTeam[];
       })
     | undefined;
@@ -169,10 +175,10 @@ export default async function TournamentDetailPage({
     const waitlistFull =
       c.waitlist_limit != null && waitlistedTeams.length >= c.waitlist_limit;
     const completelyFull = rosterFull && waitlistFull;
-    const poolsForCategory = tour.pools
-      .filter((p) => p.category_id === c.id)
+    const poolsForCategory = (c.pools ?? [])
+      .slice()
       .sort((a, b) => a.sort_order - b.sort_order);
-    const gamesForCategory = tour.games.filter((g) => g.category_id === c.id);
+    const gamesForCategory = c.games ?? [];
     return {
       ...c,
       teams,
