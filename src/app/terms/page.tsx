@@ -158,7 +158,7 @@ function EnglishTerms() {
 
       <h2>Contact</h2>
       <p>
-        Questions: <a href="mailto:dylan@buentiro.app">dylan@buentiro.app</a>.
+        Questions: <a href="mailto:hola@buentiro.app">hola@buentiro.app</a>.
       </p>
     </div>
   );
@@ -291,7 +291,7 @@ function SpanishTerms() {
 
       <h2>Contacto</h2>
       <p>
-        Preguntas: <a href="mailto:dylan@buentiro.app">dylan@buentiro.app</a>.
+        Preguntas: <a href="mailto:hola@buentiro.app">hola@buentiro.app</a>.
       </p>
     </div>
   );

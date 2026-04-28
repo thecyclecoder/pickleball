@@ -101,7 +101,7 @@ function EnglishPrivacy() {
         <li>
           Reply <strong>STOP</strong> to any WhatsApp or SMS message to opt out of that channel.
         </li>
-        <li>Email <a href="mailto:dylan@buentiro.app">dylan@buentiro.app</a> to remove your phone number or close your account entirely.</li>
+        <li>Email <a href="mailto:hola@buentiro.app">hola@buentiro.app</a> to remove your phone number or close your account entirely.</li>
         <li>Disable PWA notifications in your browser at any time.</li>
       </ul>
 
@@ -163,7 +163,7 @@ function EnglishPrivacy() {
           and lesson tied to your email.
         </li>
         <li>
-          <strong>Deletion:</strong> email <a href="mailto:dylan@buentiro.app">dylan@buentiro.app</a>
+          <strong>Deletion:</strong> email <a href="mailto:hola@buentiro.app">hola@buentiro.app</a>
           {" "}from the address on file; we&apos;ll remove your account, registrations, and contact
           details, and confirm in writing.
         </li>
@@ -189,7 +189,7 @@ function EnglishPrivacy() {
       <h2>Contact</h2>
       <p>
         Questions or requests:{" "}
-        <a href="mailto:dylan@buentiro.app">dylan@buentiro.app</a>.
+        <a href="mailto:hola@buentiro.app">hola@buentiro.app</a>.
       </p>
     </div>
   );
@@ -263,7 +263,7 @@ function SpanishPrivacy() {
           recibir más en ese canal.
         </li>
         <li>
-          Escribir a <a href="mailto:dylan@buentiro.app">dylan@buentiro.app</a> para eliminar tu
+          Escribir a <a href="mailto:hola@buentiro.app">hola@buentiro.app</a> para eliminar tu
           número o cerrar tu cuenta completamente.
         </li>
         <li>Desactivar las notificaciones PWA en tu navegador en cualquier momento.</li>
@@ -328,7 +328,7 @@ function SpanishPrivacy() {
         </li>
         <li>
           <strong>Eliminación:</strong> escribe a{" "}
-          <a href="mailto:dylan@buentiro.app">dylan@buentiro.app</a> desde el correo registrado;
+          <a href="mailto:hola@buentiro.app">hola@buentiro.app</a> desde el correo registrado;
           eliminaremos tu cuenta, inscripciones y datos de contacto, y te lo confirmaremos por
           escrito.
         </li>
@@ -355,7 +355,7 @@ function SpanishPrivacy() {
       <h2>Contacto</h2>
       <p>
         Preguntas o solicitudes:{" "}
-        <a href="mailto:dylan@buentiro.app">dylan@buentiro.app</a>.
+        <a href="mailto:hola@buentiro.app">hola@buentiro.app</a>.
       </p>
     </div>
   );
