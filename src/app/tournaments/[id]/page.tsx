@@ -412,53 +412,35 @@ export default async function TournamentDetailPage({
         )}
 
         <section className="mb-10">
-          <h2 className="mb-3 text-lg font-semibold text-white sm:text-xl">{d.section_registered_teams}</h2>
-          <div className="space-y-5">
-            {categoriesView.map((c) => (
-              <div key={c.id}>
-                <h3 className="mb-2 flex items-baseline justify-between text-sm font-medium text-zinc-200">
-                  <span>{c.display}</span>
-                  <span className="text-xs text-zinc-500">
-                    {c.registered_teams.length} / {c.team_limit}
-                    {c.waitlist_limit != null
-                      ? ` · ${c.waitlisted_teams.length} / ${c.waitlist_limit} ${locale === "es" ? "lista de espera" : "waitlist"}`
-                      : c.waitlisted_teams.length > 0
-                        ? ` · ${c.waitlisted_teams.length} ${locale === "es" ? "lista de espera" : "waitlist"}`
-                        : ""}
-                  </span>
-                </h3>
-                {c.teams.length === 0 ? (
-                  <p className="rounded-lg border border-dashed border-zinc-800 px-4 py-3 text-xs text-zinc-500">
-                    {d.no_teams_yet}
-                  </p>
-                ) : (
-                  <ul className="divide-y divide-zinc-800 overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900">
-                    {c.teams.map((team, idx) => {
-                      const pls = [...team.players].sort(
-                        (a, b) => Number(b.is_captain) - Number(a.is_captain)
-                      );
-                      return (
-                        <li key={team.id} className="flex items-center justify-between gap-2 px-4 py-3 text-sm">
-                          <div className="min-w-0 truncate">
-                            <span className="mr-2 text-xs text-zinc-500">#{idx + 1}</span>
-                            {pls
-                              .map((p) => `${p.first_name} ${p.last_name} (${Number(p.rating).toFixed(1)})`)
-                              .join(" / ") || "Team"}
-                          </div>
-                          <span
-                            className={`text-xs ${
-                              team.status === "waitlisted" ? "text-amber-500" : "text-zinc-500"
-                            }`}
-                          >
-                            {team.status === "waitlisted" ? d.waitlist_only : ""}
-                          </span>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                )}
-              </div>
-            ))}
+          <h2 className="mb-4 text-lg font-semibold text-white sm:text-xl">{d.section_registered_teams}</h2>
+          <div className="space-y-8">
+            {categoriesView.map((c) => {
+              const showWaitlist =
+                c.waitlisted_teams.length > 0 || c.waitlist_limit != null;
+              return (
+                <div key={c.id}>
+                  <h3 className="mb-3 text-base font-medium text-zinc-200">{c.display}</h3>
+                  <TeamList
+                    title={`${locale === "es" ? "Inscritos" : "Registered"} (${c.registered_teams.length} / ${c.team_limit})`}
+                    teams={c.registered_teams}
+                    tone="emerald"
+                    empty={d.no_teams_yet}
+                    locale={locale}
+                  />
+                  {showWaitlist && (
+                    <div className="mt-4">
+                      <TeamList
+                        title={`${locale === "es" ? "Lista de espera" : "Waitlist"} (${c.waitlisted_teams.length}${c.waitlist_limit != null ? ` / ${c.waitlist_limit}` : ""})`}
+                        teams={c.waitlisted_teams}
+                        tone="amber"
+                        empty=""
+                        locale={locale}
+                      />
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </section>
           </div>
@@ -466,6 +448,74 @@ export default async function TournamentDetailPage({
       </main>
       <PublicFooter />
     </div>
+  );
+}
+
+type TeamRow = LoadedTeam;
+
+function TeamList({
+  title,
+  teams,
+  tone,
+  empty,
+  locale,
+}: {
+  title: string;
+  teams: TeamRow[];
+  tone: "emerald" | "amber";
+  empty: string;
+  locale: "en" | "es";
+}) {
+  const titleColor = tone === "amber" ? "text-amber-400" : "text-zinc-400";
+  // Empty + amber means an empty waitlist when one is configured — show
+  // a friendly "no one yet" line instead of skipping. Empty + emerald
+  // (no registrations) uses the shared d.no_teams_yet message via empty.
+  if (teams.length === 0 && !empty) {
+    return (
+      <section>
+        <h4 className={`mb-2 text-xs font-semibold uppercase tracking-wider ${titleColor}`}>
+          {title}
+        </h4>
+        <p className="rounded-lg border border-dashed border-zinc-800 px-4 py-3 text-xs text-zinc-500">
+          {locale === "es" ? "Aún no hay nadie en lista de espera." : "No one on the waitlist yet."}
+        </p>
+      </section>
+    );
+  }
+  return (
+    <section>
+      <h4 className={`mb-2 text-xs font-semibold uppercase tracking-wider ${titleColor}`}>
+        {title}
+      </h4>
+      {teams.length === 0 ? (
+        <p className="rounded-lg border border-dashed border-zinc-800 px-4 py-3 text-xs text-zinc-500">
+          {empty}
+        </p>
+      ) : (
+        <ul className="divide-y divide-zinc-800 overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900">
+          {teams.map((team, idx) => {
+            const pls = [...team.players].sort(
+              (a, b) => Number(b.is_captain) - Number(a.is_captain)
+            );
+            return (
+              <li
+                key={team.id}
+                className="flex items-center justify-between gap-2 px-4 py-3 text-sm"
+              >
+                <div className="min-w-0 truncate">
+                  <span className="mr-2 text-xs text-zinc-500">#{idx + 1}</span>
+                  {pls
+                    .map(
+                      (p) => `${p.first_name} ${p.last_name} (${Number(p.rating).toFixed(1)})`
+                    )
+                    .join(" / ") || "Team"}
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </section>
   );
 }
 
