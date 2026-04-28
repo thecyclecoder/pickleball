@@ -911,6 +911,82 @@ Reply to this email and your response goes straight to ${fromEmail}. Buen Tiro i
   if (error) console.error("Resend send error (forwarded alias):", error, "to:", toEmail);
 }
 
+type PhoneUpdateRequestEmailArgs = {
+  toEmail: string;
+  toFirstName: string;
+  tournamentTitle: string;
+  /** The button link — should be a magic-link-wrapped URL pointing at
+   *  /u/<token>, so clicking signs the player in (auto-flips
+   *  players.confirmed_at via the existing auth trigger) AND drops
+   *  them on the phone-update form pre-filled with their info. */
+  ctaLink: string;
+};
+
+export async function sendPhoneUpdateRequestEmail(
+  args: PhoneUpdateRequestEmailArgs
+): Promise<void> {
+  const { toEmail, toFirstName, tournamentTitle, ctaLink } = args;
+  const subject = `Prepare for the ${tournamentTitle} — important next step`;
+  const headline = `One quick step before ${tournamentTitle}`;
+
+  const html = `<!doctype html>
+<html><head><meta charset="utf-8" /><meta name="format-detection" content="telephone=no, address=no, email=no" /><title>${escapeHtml(subject)}</title></head>
+<body style="margin:0;padding:0;background:#09090b;color:#fafafa;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#09090b;padding:24px 16px;">
+    <tr><td align="center">
+      <table role="presentation" width="560" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;width:100%;background:#18181b;border:1px solid #27272a;border-radius:16px;overflow:hidden;">
+        <tr><td style="padding:28px 28px 16px;">
+          <div style="font-size:20px;font-weight:700;letter-spacing:-0.5px;color:#fafafa;">Buen Tiro</div>
+          <div style="height:2px;width:40px;background:#10b981;border-radius:2px;margin-top:6px;"></div>
+        </td></tr>
+        <tr><td style="padding:0 28px 8px;">
+          <h1 style="margin:0 0 8px;font-size:24px;line-height:1.25;color:#fafafa;font-weight:700;">${escapeHtml(headline)}</h1>
+          <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#fafafa;">Hi ${escapeHtml(toFirstName)} — we&apos;re finalizing brackets for <strong>${escapeHtml(tournamentTitle)}</strong>, and during the event we&apos;ll be sending live updates over WhatsApp:</p>
+          <ul style="margin:0 0 20px;padding-left:20px;font-size:14px;line-height:1.7;color:#a1a1aa;">
+            <li>Your <strong style="color:#fafafa;">pool assignment + seed</strong> the moment brackets drop</li>
+            <li>Your <strong style="color:#fafafa;">court call</strong> when it&apos;s time to play</li>
+            <li><strong style="color:#fafafa;">Live scores</strong> + schedule changes throughout the day</li>
+          </ul>
+          <p style="margin:0 0 20px;font-size:14px;line-height:1.6;color:#a1a1aa;">It takes 10 seconds — tap below to add your WhatsApp number. The link signs you in to your Buen Tiro profile too, so you can check your registrations any time.</p>
+        </td></tr>
+        <tr><td style="padding:0 28px 16px;">
+          <a href="${ctaLink}" style="display:inline-block;background:#10b981;color:#ffffff;text-decoration:none;font-weight:600;font-size:15px;padding:14px 28px;border-radius:10px;">Add my WhatsApp number</a>
+        </td></tr>
+        <tr><td style="padding:0 28px 28px;">
+          <p style="margin:0;font-size:12px;color:#71717a;line-height:1.55;">Don&apos;t want WhatsApp updates? Just ignore this email — you&apos;ll still get tournament info by email. See you on the courts.</p>
+        </td></tr>
+      </table>
+      <p style="margin:16px 0 0;font-size:11px;color:#52525b;">Buen Tiro · <a href="${SITE_URL}" style="color:#52525b;text-decoration:none;">buentiro.app</a></p>
+    </td></tr>
+  </table>
+</body></html>`;
+
+  const text = `${headline}
+
+Hi ${toFirstName} — we're finalizing brackets for ${tournamentTitle}, and during the event we'll be sending live updates over WhatsApp:
+
+  • Your pool assignment + seed the moment brackets drop
+  • Your court call when it's time to play
+  • Live scores + schedule changes throughout the day
+
+It takes 10 seconds — tap the link below to add your WhatsApp number. The link signs you in to your Buen Tiro profile too.
+
+${ctaLink}
+
+Don't want WhatsApp updates? Just ignore this email — you'll still get tournament info by email.
+
+— Buen Tiro (${SITE_URL})`;
+
+  const { error } = await resend().emails.send({
+    from: FROM,
+    to: toEmail,
+    subject,
+    html,
+    text,
+  });
+  if (error) console.error("Resend send error (phone update request):", error, "to:", toEmail);
+}
+
 function escapeHtml(s: string): string {
   return s
     .replace(/&/g, "&amp;")
