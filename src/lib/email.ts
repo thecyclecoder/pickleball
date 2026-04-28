@@ -221,6 +221,115 @@ export async function sendRegistrationEmail(args: RegistrationEmailArgs): Promis
   }
 }
 
+type ClinicEmailArgs = {
+  toEmail: string;
+  toFirstName: string;
+  clinicTitle: string;
+  clinicStartDateLabel: string;
+  clinicTimeLabel: string;
+  clinicLocation: string;
+  clinicUrl: string;
+  confirmLink: string;
+  waitlisted: boolean;
+};
+
+function clinicRegistrationEmailHtml(args: ClinicEmailArgs): {
+  subject: string;
+  html: string;
+  text: string;
+} {
+  const {
+    toFirstName,
+    clinicTitle,
+    clinicStartDateLabel,
+    clinicTimeLabel,
+    clinicLocation,
+    clinicUrl,
+    confirmLink,
+    waitlisted,
+  } = args;
+
+  const headline = waitlisted
+    ? `You're on the waitlist for ${clinicTitle}`
+    : `You're signed up for ${clinicTitle}`;
+  const subject = waitlisted
+    ? `Waitlist confirmation: ${clinicTitle}`
+    : `You're in: ${clinicTitle}`;
+  const intro = waitlisted
+    ? `Hi ${toFirstName}, the clinic is at capacity, so you're on the <strong>waitlist</strong>. We'll email you if a spot opens.`
+    : `Hi ${toFirstName}, you're registered for <strong>${clinicTitle}</strong>.`;
+  const ctaHelp =
+    "Click the button below to confirm your spot and view it on your profile. This link signs you in — no password needed.";
+
+  const html = `<!doctype html>
+<html><head><meta charset="utf-8" /><title>${escapeHtml(subject)}</title></head>
+<body style="margin:0;padding:0;background:#09090b;color:#fafafa;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#09090b;padding:24px 16px;">
+    <tr><td align="center">
+      <table role="presentation" width="560" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;width:100%;background:#18181b;border:1px solid #27272a;border-radius:16px;overflow:hidden;">
+        <tr><td style="padding:28px 28px 16px;">
+          <div style="font-size:20px;font-weight:700;letter-spacing:-0.5px;color:#fafafa;">Buen Tiro</div>
+          <div style="height:2px;width:40px;background:#10b981;border-radius:2px;margin-top:6px;"></div>
+        </td></tr>
+        <tr><td style="padding:0 28px 8px;">
+          <h1 style="margin:0 0 8px;font-size:22px;line-height:1.25;color:#fafafa;font-weight:700;">${escapeHtml(headline)}</h1>
+          <p style="margin:0 0 16px;font-size:14px;line-height:1.55;color:#a1a1aa;">${intro}</p>
+        </td></tr>
+        <tr><td style="padding:0 28px 16px;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#09090b;border:1px solid #27272a;border-radius:12px;">
+            <tr><td style="padding:14px 16px;">
+              <div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#71717a;">When</div>
+              <div style="font-size:14px;color:#fafafa;margin-top:2px;">${escapeHtml(clinicStartDateLabel)} · ${escapeHtml(clinicTimeLabel)}</div>
+            </td></tr>
+            <tr><td style="padding:0 16px 14px;">
+              <div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#71717a;">Where</div>
+              <div style="font-size:14px;color:#fafafa;margin-top:2px;">${escapeHtml(clinicLocation)}</div>
+            </td></tr>
+          </table>
+        </td></tr>
+        <tr><td style="padding:0 28px 12px;">
+          <p style="margin:0 0 12px;font-size:13px;color:#a1a1aa;line-height:1.55;">${ctaHelp}</p>
+          <a href="${confirmLink}" style="display:inline-block;background:#10b981;color:#ffffff;text-decoration:none;font-weight:600;font-size:14px;padding:12px 22px;border-radius:10px;">Confirm your spot</a>
+        </td></tr>
+        <tr><td style="padding:16px 28px 28px;">
+          <p style="margin:0;font-size:12px;color:#71717a;line-height:1.55;">Clinic details: <a href="${clinicUrl}" style="color:#34d399;text-decoration:none;">${escapeHtml(clinicUrl)}</a></p>
+        </td></tr>
+      </table>
+      <p style="margin:16px 0 0;font-size:11px;color:#52525b;">Puerto Rico Pickleball · <a href="${SITE_URL}" style="color:#52525b;text-decoration:none;">buentiro.app</a></p>
+    </td></tr>
+  </table>
+</body></html>`;
+
+  const text = `${headline}
+
+${stripHtml(intro)}
+
+When: ${clinicStartDateLabel} · ${clinicTimeLabel}
+Where: ${clinicLocation}
+
+Confirm your spot: ${confirmLink}
+
+Clinic details: ${clinicUrl}
+
+— Buen Tiro (${SITE_URL})`;
+
+  return { subject, html, text };
+}
+
+export async function sendClinicRegistrationEmail(args: ClinicEmailArgs): Promise<void> {
+  const { subject, html, text } = clinicRegistrationEmailHtml(args);
+  const { error } = await resend().emails.send({
+    from: FROM,
+    to: args.toEmail,
+    subject,
+    html,
+    text,
+  });
+  if (error) {
+    console.error("Resend send error (clinic):", error, "to:", args.toEmail);
+  }
+}
+
 function escapeHtml(s: string): string {
   return s
     .replace(/&/g, "&amp;")
