@@ -36,9 +36,10 @@ export function AuthHashBootstrap() {
       });
       history.replaceState(null, "", window.location.pathname + window.location.search);
       if (!error) {
-        // Normally Supabase's redirect_to lands them on /me already;
-        // fall back to routing them there if they ended up anywhere else.
-        if (window.location.pathname !== "/me") {
+        // Default destination after a magic link is /me, but if Supabase
+        // already landed them on a specific route (e.g. /admin from an
+        // invite email), respect it.
+        if (window.location.pathname === "/") {
           router.replace("/me");
         } else {
           router.refresh();

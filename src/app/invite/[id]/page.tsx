@@ -77,6 +77,7 @@ export default async function InvitePage({
           </div>
         ) : (
           <InviteAcceptClient
+            inviteId={member.id}
             invitedEmail={member.email}
             currentUserEmail={user?.email ?? null}
           />

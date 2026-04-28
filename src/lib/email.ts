@@ -30,7 +30,10 @@ function resend(): Resend {
  *     scanners (Gmail, Outlook, Proofpoint) before the human clicks.
  *     The wrapper uses client-side JS for the final navigation, which
  *     scanners can't execute. */
-export async function generateMagicLink(email: string): Promise<string> {
+export async function generateMagicLink(
+  email: string,
+  redirectPath: string = "/me"
+): Promise<string> {
   const admin = createAdminClient();
 
   // Idempotent — Supabase's admin SDK returns errors in-band rather than
@@ -40,11 +43,12 @@ export async function generateMagicLink(email: string): Promise<string> {
   const { data, error } = await admin.auth.admin.generateLink({
     type: "magiclink",
     email,
-    // Land the recipient directly on /me so they don't briefly see the
-    // landing page before <AuthHashBootstrap> processes the hash tokens.
-    // If Supabase ever falls back to Site URL root, the bootstrap still
-    // catches and routes them to /me (just with a brief flash).
-    options: { redirectTo: `${SITE_URL}/me` },
+    // Default lands on /me. Invite emails pass "/admin" so the user
+    // goes straight to the dashboard once their workspace_members row
+    // gets linked by the auth-user-change trigger. <AuthHashBootstrap>
+    // respects the path Supabase lands them on (only forces /me when
+    // Supabase falls back to the bare site root).
+    options: { redirectTo: `${SITE_URL}${redirectPath}` },
   });
   if (error) throw new Error(`generateLink: ${error.message}`);
   const verifyUrl = data?.properties?.action_link;
@@ -52,6 +56,54 @@ export async function generateMagicLink(email: string): Promise<string> {
 
   const encoded = Buffer.from(verifyUrl, "utf8").toString("base64url");
   return `${SITE_URL}/auth/confirm?v=${encoded}`;
+}
+
+type InviteEmailArgs = {
+  toEmail: string;
+  workspaceName: string;
+  confirmLink: string;
+};
+
+export async function sendInviteMagicLink(args: InviteEmailArgs): Promise<void> {
+  const { toEmail, workspaceName, confirmLink } = args;
+  const subject = `You're invited to ${workspaceName}`;
+  const html = `<!doctype html>
+<html><head><meta charset="utf-8" /><title>${escapeHtml(subject)}</title></head>
+<body style="margin:0;padding:0;background:#09090b;color:#fafafa;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#09090b;padding:24px 16px;">
+    <tr><td align="center">
+      <table role="presentation" width="560" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;width:100%;background:#18181b;border:1px solid #27272a;border-radius:16px;overflow:hidden;">
+        <tr><td style="padding:28px 28px 16px;">
+          <div style="font-size:20px;font-weight:700;letter-spacing:-0.5px;color:#fafafa;">Buen Tiro</div>
+          <div style="height:2px;width:40px;background:#10b981;border-radius:2px;margin-top:6px;"></div>
+        </td></tr>
+        <tr><td style="padding:0 28px 8px;">
+          <h1 style="margin:0 0 8px;font-size:22px;line-height:1.25;color:#fafafa;font-weight:700;">You're invited to ${escapeHtml(workspaceName)}</h1>
+          <p style="margin:0 0 16px;font-size:14px;line-height:1.55;color:#a1a1aa;">Tap the button below to sign in and accept the invite. This link signs you in — no password needed.</p>
+        </td></tr>
+        <tr><td style="padding:0 28px 12px;">
+          <a href="${confirmLink}" style="display:inline-block;background:#10b981;color:#ffffff;text-decoration:none;font-weight:600;font-size:14px;padding:12px 22px;border-radius:10px;">Accept invite</a>
+        </td></tr>
+        <tr><td style="padding:16px 28px 28px;">
+          <p style="margin:0;font-size:12px;color:#71717a;line-height:1.55;">If you didn't expect this invite, you can ignore this email.</p>
+        </td></tr>
+      </table>
+      <p style="margin:16px 0 0;font-size:11px;color:#52525b;">Buen Tiro · <a href="${SITE_URL}" style="color:#52525b;text-decoration:none;">buentiro.app</a></p>
+    </td></tr>
+  </table>
+</body></html>`;
+  const text = `You're invited to ${workspaceName}.\n\nAccept the invite: ${confirmLink}\n\n— Buen Tiro (${SITE_URL})`;
+
+  const { error } = await resend().emails.send({
+    from: FROM,
+    to: toEmail,
+    subject,
+    html,
+    text,
+  });
+  if (error) {
+    console.error("Resend send error (invite):", error, "to:", toEmail);
+  }
 }
 
 type RegistrationEmailArgs = {
