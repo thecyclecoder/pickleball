@@ -257,3 +257,71 @@ export function clinicRatingLabel(r: ClinicRating, locale: "en" | "es" = "en"): 
   if (r === "beginner") return locale === "es" ? "Principiante" : "Beginner";
   return r;
 }
+
+export const LESSON_TYPES = ["private", "semi_private", "group"] as const;
+export type LessonType = (typeof LESSON_TYPES)[number];
+
+export function lessonTypeLabel(t: LessonType, locale: "en" | "es" = "en"): string {
+  if (locale === "es") {
+    return t === "private" ? "Privada" : t === "semi_private" ? "Semi-privada" : "Grupal";
+  }
+  return t === "private" ? "Private" : t === "semi_private" ? "Semi-private" : "Group";
+}
+
+export type CoachProfile = {
+  id: string;
+  workspace_id: string;
+  slug: string;
+  display_name: string;
+  display_name_es: string | null;
+  tagline: string | null;
+  tagline_es: string | null;
+  bio: string | null;
+  bio_es: string | null;
+  images: TournamentImage[];
+  avatar_url: string | null;
+  languages: string[];
+  lesson_types: LessonType[];
+  skill_levels: ClinicRating[];
+  price_notes: string | null;
+  price_notes_es: string | null;
+  service_area: string | null;
+  service_area_es: string | null;
+  certifications: string | null;
+  certifications_es: string | null;
+  years_coaching: number | null;
+  dupr_rating: number | null;
+  status: "draft" | "published";
+  accepting_requests: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+export const LESSON_REQUEST_STATUSES = [
+  "new",
+  "contacted",
+  "scheduled",
+  "completed",
+  "cancelled",
+] as const;
+export type LessonRequestStatus = (typeof LESSON_REQUEST_STATUSES)[number];
+
+export type LessonRequest = {
+  id: string;
+  coach_profile_id: string | null;
+  workspace_id: string | null;
+  user_id: string | null;
+  first_name: string;
+  last_name: string;
+  email: string;
+  phone: string | null;
+  skill_level: ClinicRating;
+  lesson_type: LessonType | null;
+  goals: string | null;
+  schedule_notes: string | null;
+  status: LessonRequestStatus;
+  paid_at: string | null;
+  confirmed_at: string | null;
+  created_at: string;
+  updated_at: string;
+};

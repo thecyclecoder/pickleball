@@ -11,6 +11,7 @@ const ITEMS: Item[] = [
   { href: "/admin", label: "Dashboard" },
   { href: "/admin/tournaments", label: "Tournaments" },
   { href: "/admin/clinics", label: "Clinics" },
+  { href: "/admin/coach", label: "Coach profile" },
   { href: "/admin/formats", label: "Formats" },
   { href: "/admin/players", label: "Players" },
   { href: "/admin/members", label: "Members" },

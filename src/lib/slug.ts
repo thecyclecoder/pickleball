@@ -26,6 +26,14 @@ export async function uniqueClinicSlug(
   return uniqueSlugInTable(admin, "clinics", base, "clinic", ignoreId);
 }
 
+export async function uniqueCoachSlug(
+  admin: SupabaseClient,
+  base: string,
+  ignoreId?: string
+): Promise<string> {
+  return uniqueSlugInTable(admin, "coach_profiles", base, "coach", ignoreId);
+}
+
 async function uniqueSlugInTable(
   admin: SupabaseClient,
   table: string,
