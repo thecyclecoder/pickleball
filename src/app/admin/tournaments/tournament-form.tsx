@@ -44,6 +44,8 @@ type CategoryDraft = {
   label: string;
   label_es: string;
   team_limit: number;
+  /** null = unlimited waitlist (no auto-close). */
+  waitlist_limit: number | null;
   sort_order: number;
   format_id: string | null;
   pool_count: number | null;
@@ -583,6 +585,7 @@ function CategoryEditor({
         label: "",
         label_es: "",
         team_limit: 16,
+        waitlist_limit: null,
         sort_order: categories.length,
         format_id: null,
         pool_count: null,
@@ -606,7 +609,7 @@ function CategoryEditor({
       )}
       {categories.map((c, i) => (
         <div key={i} className="rounded-lg border border-zinc-800 bg-zinc-950 p-3">
-          <div className="grid gap-3 sm:grid-cols-5">
+          <div className="grid gap-3 sm:grid-cols-6">
             <div>
               <Label>Type</Label>
               <select
@@ -642,6 +645,21 @@ function CategoryEditor({
                 min={1}
                 value={c.team_limit}
                 onChange={(e) => update(i, { team_limit: Number(e.target.value) })}
+                className="w-full rounded-lg border border-zinc-800 bg-zinc-900 px-2 py-2 text-sm text-white"
+              />
+            </div>
+            <div>
+              <Label>Waitlist cap</Label>
+              <input
+                type="number"
+                min={0}
+                value={c.waitlist_limit ?? ""}
+                placeholder="unlimited"
+                onChange={(e) =>
+                  update(i, {
+                    waitlist_limit: e.target.value === "" ? null : Number(e.target.value),
+                  })
+                }
                 className="w-full rounded-lg border border-zinc-800 bg-zinc-900 px-2 py-2 text-sm text-white"
               />
             </div>

@@ -89,6 +89,9 @@ export type TournamentCategory = {
   label: string | null;
   label_es: string | null;
   team_limit: number;
+  /** Cap on waitlisted teams. NULL = unlimited (current behavior).
+   *  When set and reached, registration is rejected with a 409. */
+  waitlist_limit: number | null;
   sort_order: number;
   format_id: string | null;
   pool_count: number | null;

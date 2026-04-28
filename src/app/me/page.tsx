@@ -62,6 +62,8 @@ type ClinicRow = {
   rating_self: ClinicRating;
   age: number;
   registered_at: string;
+  first_name: string;
+  last_name: string;
   clinic: {
     id: string;
     slug: string;
@@ -85,6 +87,8 @@ type LessonRow = {
   goals: string | null;
   schedule_notes: string | null;
   created_at: string;
+  first_name: string;
+  last_name: string;
   coach: {
     id: string;
     slug: string;
@@ -138,7 +142,7 @@ export default async function MePage() {
     admin
       .from("clinic_registrations")
       .select(
-        `id, status, paid_at, rating_self, age, registered_at,
+        `id, status, paid_at, rating_self, age, registered_at, first_name, last_name,
          clinic:clinics!inner (
            id, slug, title, title_es, start_date, end_date, start_time, timezone,
            location, location_es
@@ -149,6 +153,7 @@ export default async function MePage() {
       .from("lesson_requests")
       .select(
         `id, status, paid_at, skill_level, lesson_type, goals, schedule_notes, created_at,
+         first_name, last_name,
          coach:coach_profiles!inner (
            id, slug, display_name, display_name_es, tagline, tagline_es, avatar_url
          )`
@@ -220,7 +225,27 @@ export default async function MePage() {
     .sort((a, b) => b.start_date.localeCompare(a.start_date));
 
   const meta = user.user_metadata ?? {};
-  const displayName = [meta.first_name, meta.last_name].filter(Boolean).join(" ") || user.email;
+  // Magic-link signups don't populate user_metadata, but we already know
+  // who the user is from any existing tournament/clinic/lesson row.
+  // Fall back through them in order, then persist back to user_metadata
+  // so future page loads (and other surfaces) have the name without a
+  // second lookup.
+  const fallbackRow =
+    playerRows[0] ?? clinicRows[0] ?? lessonRows[0] ?? null;
+  const firstName = (meta.first_name as string | undefined) ?? fallbackRow?.first_name ?? null;
+  const lastName = (meta.last_name as string | undefined) ?? fallbackRow?.last_name ?? null;
+  if (!meta.first_name && !meta.last_name && (firstName || lastName)) {
+    admin.auth.admin
+      .updateUserById(user.id, {
+        user_metadata: {
+          ...meta,
+          first_name: firstName ?? undefined,
+          last_name: lastName ?? undefined,
+        },
+      })
+      .catch((e) => console.error("Failed to backfill user_metadata name:", e));
+  }
+  const displayName = [firstName, lastName].filter(Boolean).join(" ") || user.email;
 
   const L =
     locale === "es"

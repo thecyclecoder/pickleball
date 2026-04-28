@@ -116,6 +116,7 @@ export default async function AdminTournamentEditPage({
             label: c.label ?? "",
             label_es: c.label_es ?? "",
             team_limit: c.team_limit,
+            waitlist_limit: c.waitlist_limit ?? null,
             sort_order: c.sort_order,
             format_id: c.format_id ?? null,
             pool_count: c.pool_count ?? null,

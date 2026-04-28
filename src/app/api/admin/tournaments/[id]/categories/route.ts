@@ -25,6 +25,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const label = body.label ?? null;
   const label_es = body.label_es ?? null;
   const teamLimit = Number(body.team_limit ?? 16);
+  const waitlistLimit =
+    body.waitlist_limit === null || body.waitlist_limit === undefined || body.waitlist_limit === ""
+      ? null
+      : Number(body.waitlist_limit);
   const sortOrder = Number(body.sort_order ?? 0);
   const formatId = body.format_id ?? null;
   const poolCount =
@@ -43,6 +47,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   if (!Number.isFinite(teamLimit) || teamLimit <= 0) {
     return NextResponse.json({ error: "Invalid team limit" }, { status: 400 });
   }
+  if (waitlistLimit !== null && (!Number.isFinite(waitlistLimit) || waitlistLimit < 0)) {
+    return NextResponse.json({ error: "Invalid waitlist limit" }, { status: 400 });
+  }
 
   const { data, error } = await admin
     .from("tournament_categories")
@@ -53,6 +60,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       label: label?.trim() || null,
       label_es: label_es?.trim() || null,
       team_limit: teamLimit,
+      waitlist_limit: waitlistLimit,
       sort_order: sortOrder,
       format_id: formatId,
       pool_count: poolCount,

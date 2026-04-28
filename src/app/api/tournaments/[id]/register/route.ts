@@ -97,13 +97,28 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     );
   }
 
-  // Count active teams in category
-  const { count: activeCount } = await admin
+  // Count active teams in category, split by status. If the roster is at
+  // team_limit, the next team goes onto the waitlist — unless the category
+  // also has a waitlist_limit and that's full too, in which case we reject
+  // with 409 (matches the clinic auto-close behavior).
+  const { data: activeRows } = await admin
     .from("teams")
-    .select("id", { count: "exact", head: true })
+    .select("status")
     .eq("category_id", cat.id)
     .neq("status", "cancelled");
-  const status = (activeCount ?? 0) >= cat.team_limit ? "waitlisted" : "registered";
+  const registeredCount = (activeRows ?? []).filter((t) => t.status === "registered").length;
+  const waitlistedCount = (activeRows ?? []).filter((t) => t.status === "waitlisted").length;
+
+  let status: "registered" | "waitlisted" = "registered";
+  if (registeredCount >= cat.team_limit) {
+    if (cat.waitlist_limit != null && waitlistedCount >= cat.waitlist_limit) {
+      return NextResponse.json(
+        { error: "This category is full. Registration is closed." },
+        { status: 409 }
+      );
+    }
+    status = "waitlisted";
+  }
 
   // Create team
   const { data: team, error: teamErr } = await admin

@@ -46,6 +46,7 @@ export async function PATCH(
     "label",
     "label_es",
     "team_limit",
+    "waitlist_limit",
     "sort_order",
     "format_id",
     "pool_count",

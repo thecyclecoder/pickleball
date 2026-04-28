@@ -155,14 +155,28 @@ export default async function TournamentDetailPage({
 
   const categoriesView = sortedCategories.map((c) => {
     const teams = (teamsByCategory.get(c.id) ?? []).filter((x) => x.status !== "cancelled");
+    const registeredTeams = teams.filter((t) => t.status !== "waitlisted");
+    const waitlistedTeams = teams.filter((t) => t.status === "waitlisted");
+    const spotsRemaining = Math.max(0, c.team_limit - registeredTeams.length);
+    const rosterFull = registeredTeams.length >= c.team_limit;
+    const waitlistFull =
+      c.waitlist_limit != null && waitlistedTeams.length >= c.waitlist_limit;
+    const completelyFull = rosterFull && waitlistFull;
     return {
       ...c,
       teams,
-      spots_remaining: Math.max(0, c.team_limit - teams.length),
-      is_full: teams.length >= c.team_limit,
+      registered_teams: registeredTeams,
+      waitlisted_teams: waitlistedTeams,
+      spots_remaining: spotsRemaining,
+      is_full: rosterFull,
+      waitlist_full: waitlistFull,
+      completely_full: completelyFull,
       display: categoryLabelI18n(c, locale),
     };
   });
+
+  const openCategories = categoriesView.filter((c) => !c.completely_full);
+  const allCategoriesFull = categoriesView.length > 0 && openCategories.length === 0;
 
   const paymentInstructions = pick<string>(
     tour.payment_instructions ?? "",
@@ -299,12 +313,31 @@ export default async function TournamentDetailPage({
           <ul className="divide-y divide-zinc-800 overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900">
             {categoriesView.map((c) => {
               const fmt = c.format;
+              const labelFull = locale === "es" ? "Llena" : "Full";
+              const labelWaitlist = locale === "es" ? "lista de espera" : "waitlist";
               return (
                 <li key={c.id} className="px-4 py-3 text-sm sm:px-5">
                   <div className="flex items-center justify-between gap-3">
                     <span className="text-white">{c.display}</span>
-                    <span className={`whitespace-nowrap text-xs ${c.is_full ? "text-amber-500" : "text-zinc-400"}`}>
-                      {formatTeamsOf(locale, c.teams.length, c.team_limit)} {c.is_full && d.waitlist_suffix}
+                    <span
+                      className={`whitespace-nowrap text-xs ${
+                        c.completely_full
+                          ? "text-zinc-500"
+                          : c.is_full
+                            ? "text-amber-500"
+                            : "text-zinc-400"
+                      }`}
+                    >
+                      {formatTeamsOf(locale, c.registered_teams.length, c.team_limit)}
+                      {c.waitlist_limit != null ? (
+                        <>
+                          {" · "}
+                          {c.waitlisted_teams.length} / {c.waitlist_limit} {labelWaitlist}
+                        </>
+                      ) : (
+                        c.is_full && <> {d.waitlist_suffix}</>
+                      )}
+                      {c.completely_full && <> · {labelFull}</>}
                     </span>
                   </div>
                   {fmt && (
@@ -325,12 +358,25 @@ export default async function TournamentDetailPage({
           </ul>
         </section>
 
-        {tour.registration_open && categoriesView.length > 0 && (
+        {tour.registration_open && allCategoriesFull && (
+          <section className="mb-8 rounded-xl border border-amber-800 bg-amber-950/20 p-5 text-center sm:p-6">
+            <p className="text-sm font-semibold uppercase tracking-wider text-amber-400">
+              {locale === "es" ? "Llena" : "Full"}
+            </p>
+            <p className="mt-2 text-sm text-amber-100/80">
+              {locale === "es"
+                ? "Todas las categorías están llenas. La inscripción está cerrada."
+                : "All categories are full. Registration is closed."}
+            </p>
+          </section>
+        )}
+
+        {tour.registration_open && openCategories.length > 0 && (
           <section className="mb-8">
             <h2 className="mb-3 text-lg font-semibold text-white sm:text-xl">{d.section_register}</h2>
             <RegisterForm
               tournamentSlug={tour.slug}
-              categories={categoriesView.map((c) => ({
+              categories={openCategories.map((c) => ({
                 id: c.id,
                 label: c.display,
                 is_full: c.is_full,
@@ -370,7 +416,14 @@ export default async function TournamentDetailPage({
               <div key={c.id}>
                 <h3 className="mb-2 flex items-baseline justify-between text-sm font-medium text-zinc-200">
                   <span>{c.display}</span>
-                  <span className="text-xs text-zinc-500">{c.teams.length} / {c.team_limit}</span>
+                  <span className="text-xs text-zinc-500">
+                    {c.registered_teams.length} / {c.team_limit}
+                    {c.waitlist_limit != null
+                      ? ` · ${c.waitlisted_teams.length} / ${c.waitlist_limit} ${locale === "es" ? "lista de espera" : "waitlist"}`
+                      : c.waitlisted_teams.length > 0
+                        ? ` · ${c.waitlisted_teams.length} ${locale === "es" ? "lista de espera" : "waitlist"}`
+                        : ""}
+                  </span>
                 </h3>
                 {c.teams.length === 0 ? (
                   <p className="rounded-lg border border-dashed border-zinc-800 px-4 py-3 text-xs text-zinc-500">
