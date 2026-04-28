@@ -410,11 +410,12 @@ export function CoachProfileForm({ initial }: { initial: CoachProfile | null }) 
             <Label>DUPR rating</Label>
             <input
               type="number"
-              step="0.1"
+              step="0.001"
               min={0}
-              max={9}
+              max={9.999}
               value={form.dupr_rating}
               onChange={(e) => set("dupr_rating", e.target.value)}
+              placeholder="e.g. 4.763"
               className="w-full rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-white"
             />
           </div>
