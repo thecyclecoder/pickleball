@@ -138,14 +138,14 @@ export default async function Home() {
                 </Link>
               </div>
             </div>
-            <div className="grid gap-0 sm:gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid items-start gap-0 sm:gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {events.map((e, idx) => (
                 <Link
                   key={e.key}
                   href={e.href}
                   className="group overflow-hidden border-b border-zinc-800 bg-zinc-900 transition-colors hover:border-emerald-600 sm:rounded-xl sm:border sm:border-zinc-800"
                 >
-                  <div className="aspect-[9/16] bg-zinc-800">
+                  <div className="bg-zinc-800">
                     {e.images.length > 0 ? (
                       <CoverSlideshow
                         images={e.images}
@@ -155,7 +155,7 @@ export default async function Home() {
                       />
                     ) : e.flyer_image_url ? (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={e.flyer_image_url} alt={e.title} className="h-full w-full object-cover" />
+                      <img src={e.flyer_image_url} alt={e.title} className="block h-auto w-full" />
                     ) : null}
                   </div>
                   <div className="p-4">

@@ -107,7 +107,7 @@ export default async function TournamentsPage() {
             <p className="text-sm text-zinc-400">{d.no_tournaments}</p>
           </div>
         ) : (
-          <div className="grid gap-0 sm:gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid items-start gap-0 sm:gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {tournaments.map((tt, idx) => {
               const totalLimit = tt.categories.reduce((a, c) => a + c.team_limit, 0);
               const totalActive = tt.teams.filter((x) => x.status !== "cancelled").length;
@@ -119,7 +119,7 @@ export default async function TournamentsPage() {
                   href={`/tournaments/${tt.slug}`}
                   className="group overflow-hidden border-b border-zinc-800 bg-zinc-900 transition-colors hover:border-emerald-600 sm:rounded-xl sm:border sm:border-zinc-800"
                 >
-                  <div className="aspect-[9/16] bg-zinc-800">
+                  <div className="bg-zinc-800">
                     {imgs.length > 0 ? (
                       <CoverSlideshow
                         images={imgs}
@@ -132,10 +132,10 @@ export default async function TournamentsPage() {
                       <img
                         src={tt.flyer_image_url}
                         alt={tt.title}
-                        className="h-full w-full object-cover"
+                        className="block h-auto w-full"
                       />
                     ) : (
-                      <div className="flex h-full items-center justify-center text-xs uppercase tracking-widest text-zinc-600">
+                      <div className="flex aspect-[9/16] items-center justify-center text-xs uppercase tracking-widest text-zinc-600">
                         {d.no_flyer}
                       </div>
                     )}
