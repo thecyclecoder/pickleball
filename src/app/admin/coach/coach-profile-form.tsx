@@ -42,7 +42,15 @@ const LANGUAGE_OPTIONS: { value: string; en: string; es: string }[] = [
   { value: "es", en: "Spanish", es: "Español" },
 ];
 
-export function CoachProfileForm({ initial }: { initial: CoachProfile | null }) {
+export function CoachProfileForm({
+  initial,
+  apiEndpoint = "/api/admin/coach",
+  onDeletedHref,
+}: {
+  initial: CoachProfile | null;
+  apiEndpoint?: string;
+  onDeletedHref?: string;
+}) {
   const router = useRouter();
   const [form, setForm] = useState<FormState>({
     display_name: initial?.display_name ?? "",
@@ -163,7 +171,7 @@ export function CoachProfileForm({ initial }: { initial: CoachProfile | null }) 
         status: form.status,
         accepting_requests: form.accepting_requests,
       };
-      const res = await fetch("/api/admin/coach", {
+      const res = await fetch(apiEndpoint, {
         method: "PUT",
         headers: { "content-type": "application/json" },
         body: JSON.stringify(payload),
@@ -180,9 +188,12 @@ export function CoachProfileForm({ initial }: { initial: CoachProfile | null }) 
   }
 
   async function remove() {
-    if (!confirm("Delete your coach profile? Existing lesson requests are preserved.")) return;
-    const res = await fetch("/api/admin/coach", { method: "DELETE" });
-    if (res.ok) router.refresh();
+    if (!confirm("Delete this coach profile? Existing lesson requests are preserved.")) return;
+    const res = await fetch(apiEndpoint, { method: "DELETE" });
+    if (res.ok) {
+      if (onDeletedHref) router.push(onDeletedHref);
+      else router.refresh();
+    }
   }
 
   return (

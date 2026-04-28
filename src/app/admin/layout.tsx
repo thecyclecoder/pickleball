@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { getCurrentMembership } from "@/lib/auth";
+import { getCurrentMembership, isSuperAdmin } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { WorkspaceSwitcher } from "./workspace-switcher";
 import { HomeLink } from "@/components/home-link";
@@ -44,7 +44,10 @@ export default async function AdminLayout({ children }: { children: React.ReactN
               options={switcherOptions}
               canCreate={res.canCreateWorkspace}
             />
-            <AdminMenu userEmail={res.user.email ?? null} />
+            <AdminMenu
+              userEmail={res.user.email ?? null}
+              isSuperAdmin={isSuperAdmin(res.user)}
+            />
           </div>
         </div>
       </header>

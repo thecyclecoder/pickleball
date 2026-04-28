@@ -19,7 +19,17 @@ const ITEMS: Item[] = [
   { href: "/admin/settings", label: "Settings" },
 ];
 
-export function AdminMenu({ userEmail }: { userEmail: string | null }) {
+const SUPER_ADMIN_ITEMS: Item[] = [
+  { href: "/admin/coaches", label: "All coach profiles" },
+];
+
+export function AdminMenu({
+  userEmail,
+  isSuperAdmin = false,
+}: {
+  userEmail: string | null;
+  isSuperAdmin?: boolean;
+}) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const router = useRouter();
@@ -73,6 +83,27 @@ export function AdminMenu({ userEmail }: { userEmail: string | null }) {
                 </Link>
               </li>
             ))}
+
+            {isSuperAdmin && (
+              <>
+                <li aria-hidden className="my-1 h-px bg-zinc-800" />
+                <li aria-hidden className="px-4 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-widest text-zinc-500">
+                  Super-admin
+                </li>
+                {SUPER_ADMIN_ITEMS.map((it) => (
+                  <li key={it.href}>
+                    <Link
+                      href={it.href}
+                      onClick={() => setOpen(false)}
+                      role="menuitem"
+                      className="block px-4 py-2.5 text-zinc-300 hover:bg-zinc-800 hover:text-white"
+                    >
+                      {it.label}
+                    </Link>
+                  </li>
+                ))}
+              </>
+            )}
 
             <li aria-hidden className="my-1 h-px bg-zinc-800" />
 
