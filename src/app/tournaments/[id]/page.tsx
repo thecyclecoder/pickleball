@@ -393,6 +393,8 @@ export default async function TournamentDetailPage({
                 form_first_name: d.form_first_name,
                 form_last_name: d.form_last_name,
                 form_email: d.form_email,
+                form_phone: d.form_phone,
+                form_phone_hint: d.form_phone_hint,
                 form_rating: d.form_rating,
                 form_rating_placeholder: d.form_rating_placeholder,
                 form_submit_register: d.form_submit_register,

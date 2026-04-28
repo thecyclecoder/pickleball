@@ -23,6 +23,8 @@ type Labels = {
   form_first_name: string;
   form_last_name: string;
   form_email: string;
+  form_phone: string;
+  form_phone_hint: string;
   form_rating: string;
   form_rating_placeholder: string;
   form_submit_register: string;
@@ -40,10 +42,11 @@ type PlayerFields = {
   first_name: string;
   last_name: string;
   email: string;
+  phone: string;
   rating: string;
 };
 
-const emptyPlayer: PlayerFields = { first_name: "", last_name: "", email: "", rating: "" };
+const emptyPlayer: PlayerFields = { first_name: "", last_name: "", email: "", phone: "", rating: "" };
 
 export function RegisterForm({
   tournamentSlug,
@@ -74,7 +77,11 @@ export function RegisterForm({
       const res = await fetch(`/api/tournaments/${tournamentSlug}/register`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ category_id: categoryId, player1: p1, player2: p2 }),
+        body: JSON.stringify({
+          category_id: categoryId,
+          player1: { ...p1, phone: p1.phone || undefined },
+          player2: { ...p2, phone: p2.phone || undefined },
+        }),
       });
       const body = await res.json();
       if (!res.ok) throw new Error(body.error || "Registration failed");
@@ -191,6 +198,17 @@ function PlayerFieldset({
               </option>
             ))}
           </select>
+        </div>
+        <div className="sm:col-span-2">
+          <TextField
+            label={labels.form_phone}
+            type="tel"
+            value={player.phone}
+            onChange={(v) => onChange({ ...player, phone: v })}
+            autoComplete="tel"
+            inputMode="tel"
+          />
+          <p className="mt-1 text-[11px] text-zinc-500">{labels.form_phone_hint}</p>
         </div>
       </div>
     </fieldset>

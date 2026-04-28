@@ -168,6 +168,7 @@ export type Player = {
   first_name: string;
   last_name: string;
   email: string;
+  phone: string | null;
   rating: number;
   is_captain: boolean;
   confirmed_at: string | null;
@@ -254,6 +255,7 @@ export type ClinicRegistration = {
   first_name: string;
   last_name: string;
   email: string;
+  phone: string | null;
   rating_self: ClinicRating;
   age: number;
   status: "registered" | "waitlisted" | "cancelled";

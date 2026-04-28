@@ -17,6 +17,7 @@ export function ClinicRegisterForm({
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const [age, setAge] = useState("");
   const [rating, setRating] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -28,6 +29,8 @@ export function ClinicRegisterForm({
           firstName: "Nombre",
           lastName: "Apellido",
           email: "Correo",
+          phone: "WhatsApp / teléfono",
+          phoneHint: "Para recordatorios y cambios de última hora.",
           age: "Edad",
           rating: "Tu nivel de juego",
           ratingHint: "Si nunca has jugado, elige Principiante.",
@@ -41,6 +44,8 @@ export function ClinicRegisterForm({
           firstName: "First name",
           lastName: "Last name",
           email: "Email",
+          phone: "WhatsApp / phone",
+          phoneHint: "Used for reminders and last-minute updates.",
           age: "Age",
           rating: "Your skill level",
           ratingHint: "Pick Beginner if you haven't played before.",
@@ -63,6 +68,7 @@ export function ClinicRegisterForm({
           first_name: firstName,
           last_name: lastName,
           email,
+          phone: phone || undefined,
           age: Number(age),
           rating_self: rating,
         }),
@@ -100,6 +106,17 @@ export function ClinicRegisterForm({
           onChange={setAge}
           inputMode="numeric"
         />
+      </div>
+      <div>
+        <Field
+          label={L.phone}
+          type="tel"
+          value={phone}
+          onChange={setPhone}
+          autoComplete="tel"
+          inputMode="tel"
+        />
+        <p className="mt-1 text-[11px] text-zinc-500">{L.phoneHint}</p>
       </div>
       <div>
         <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-zinc-400">

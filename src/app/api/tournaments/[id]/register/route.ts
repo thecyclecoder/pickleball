@@ -11,6 +11,7 @@ type PlayerInput = {
   first_name?: string;
   last_name?: string;
   email?: string;
+  phone?: string;
   rating?: string | number;
 };
 
@@ -25,6 +26,7 @@ function sanitizePlayer(p: PlayerInput | undefined, who: "Player 1" | "Player 2"
   const first = (p.first_name ?? "").trim();
   const last = (p.last_name ?? "").trim();
   const email = (p.email ?? "").trim().toLowerCase();
+  const phone = (p.phone ?? "").trim() || null;
   const rating = String(p.rating ?? "").trim();
   if (!first) throw new Error(`${who}: first name is required`);
   if (!last) throw new Error(`${who}: last name is required`);
@@ -32,7 +34,7 @@ function sanitizePlayer(p: PlayerInput | undefined, who: "Player 1" | "Player 2"
   if (!(RATING_OPTIONS as readonly string[]).includes(rating)) {
     throw new Error(`${who}: rating must be one of ${RATING_OPTIONS.join(", ")}`);
   }
-  return { first_name: first, last_name: last, email, rating: Number(rating) };
+  return { first_name: first, last_name: last, email, phone, rating: Number(rating) };
 }
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {

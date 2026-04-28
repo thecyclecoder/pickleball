@@ -10,6 +10,7 @@ type Body = {
   first_name?: string;
   last_name?: string;
   email?: string;
+  phone?: string;
   rating_self?: string;
   age?: number | string;
 };
@@ -23,6 +24,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const first = (body.first_name ?? "").trim();
   const last = (body.last_name ?? "").trim();
   const email = (body.email ?? "").trim().toLowerCase();
+  const phone = (body.phone ?? "").trim() || null;
   const rating = (body.rating_self ?? "").toString().trim();
   const age = Number(body.age);
 
@@ -102,6 +104,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       first_name: first,
       last_name: last,
       email,
+      phone,
       rating_self: rating as ClinicRating,
       age,
       status: assignedStatus,
