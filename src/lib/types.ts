@@ -180,3 +180,80 @@ export type TournamentWithDetails = Tournament & {
 export const RATING_OPTIONS = ["2.5", "3.0", "3.5", "4.0", "4.5", "5.0", "5.5", "6.0", "6.5"] as const;
 export const CATEGORY_RATINGS = ["3.0", "3.5", "4.0", "4.0+", "4.5", "4.5+", "5.0", "5.0+", "open"] as const;
 export const CATEGORY_TYPES: CategoryType[] = ["MD", "WD", "MXD"];
+
+export const CLINIC_RATING_OPTIONS = [
+  "beginner",
+  "2.5",
+  "3.0",
+  "3.5",
+  "4.0",
+  "4.5",
+  "5.0",
+  "5.5",
+  "6.0",
+  "6.5",
+] as const;
+export type ClinicRating = (typeof CLINIC_RATING_OPTIONS)[number];
+
+export type Clinic = {
+  id: string;
+  workspace_id: string;
+  slug: string;
+  title: string;
+  title_es: string | null;
+  description: string | null;
+  description_es: string | null;
+  details: string | null;
+  details_es: string | null;
+  flyer_image_url: string | null;
+  images: TournamentImage[];
+  start_date: string;
+  end_date: string | null;
+  start_time: string;
+  timezone: string;
+  location: string;
+  location_es: string | null;
+  address: string | null;
+  address_es: string | null;
+  google_maps_url: string | null;
+  status: TournamentStatus;
+  registration_open: boolean;
+  capacity: number | null;
+  payment_qr_url: string | null;
+  payment_instructions: string | null;
+  payment_instructions_es: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type ClinicCoach = {
+  id: string;
+  clinic_id: string;
+  name: string;
+  title: string | null;
+  image_url: string | null;
+  sort_order: number;
+  created_at: string;
+};
+
+export type ClinicRegistration = {
+  id: string;
+  clinic_id: string | null;
+  workspace_id: string | null;
+  user_id: string | null;
+  first_name: string;
+  last_name: string;
+  email: string;
+  rating_self: ClinicRating;
+  age: number;
+  status: "registered" | "waitlisted" | "cancelled";
+  paid_at: string | null;
+  confirmed_at: string | null;
+  registered_at: string;
+  created_at: string;
+};
+
+export function clinicRatingLabel(r: ClinicRating, locale: "en" | "es" = "en"): string {
+  if (r === "beginner") return locale === "es" ? "Principiante" : "Beginner";
+  return r;
+}

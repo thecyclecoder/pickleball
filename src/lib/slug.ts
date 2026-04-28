@@ -15,10 +15,28 @@ export async function uniqueTournamentSlug(
   base: string,
   ignoreId?: string
 ): Promise<string> {
-  const root = slugify(base) || "tournament";
+  return uniqueSlugInTable(admin, "tournaments", base, "tournament", ignoreId);
+}
+
+export async function uniqueClinicSlug(
+  admin: SupabaseClient,
+  base: string,
+  ignoreId?: string
+): Promise<string> {
+  return uniqueSlugInTable(admin, "clinics", base, "clinic", ignoreId);
+}
+
+async function uniqueSlugInTable(
+  admin: SupabaseClient,
+  table: string,
+  base: string,
+  fallback: string,
+  ignoreId?: string
+): Promise<string> {
+  const root = slugify(base) || fallback;
   let candidate = root;
   for (let i = 2; i < 1000; i++) {
-    let q = admin.from("tournaments").select("id").eq("slug", candidate).limit(1);
+    let q = admin.from(table).select("id").eq("slug", candidate).limit(1);
     if (ignoreId) q = q.neq("id", ignoreId);
     const { data, error } = await q;
     if (error) throw error;
