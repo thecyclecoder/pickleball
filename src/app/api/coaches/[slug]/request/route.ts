@@ -46,6 +46,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     return NextResponse.json({ error: "Valid email is required" }, { status: 400 });
   }
+  if (!phone) {
+    return NextResponse.json({ error: "Phone number is required" }, { status: 400 });
+  }
   if (!(CLINIC_RATING_OPTIONS as readonly string[]).includes(skill)) {
     return NextResponse.json({ error: "Pick a skill level" }, { status: 400 });
   }

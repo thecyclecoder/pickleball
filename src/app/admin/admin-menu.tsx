@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
-type Item = { href: string; label: string };
+type Item = { href: string; label: string; badgeKey?: string };
 type WorkspaceKind = "club" | "coach";
 
 const CLUB_ITEMS: Item[] = [
@@ -21,6 +21,7 @@ const CLUB_ITEMS: Item[] = [
 
 const COACH_ITEMS: Item[] = [
   { href: "/admin", label: "Dashboard" },
+  { href: "/admin/lesson-requests", label: "Lesson requests", badgeKey: "lessonRequests" },
   { href: "/admin/clinics", label: "Clinics" },
   { href: "/admin/coach", label: "Coach profile" },
   { href: "/admin/players", label: "Players" },
@@ -37,10 +38,14 @@ export function AdminMenu({
   userEmail,
   isSuperAdmin = false,
   workspaceKind = "club",
+  badges = {},
 }: {
   userEmail: string | null;
   isSuperAdmin?: boolean;
   workspaceKind?: WorkspaceKind;
+  /** Pending counts keyed by item.badgeKey — rendered as a small pill
+   *  next to the menu label when > 0. */
+  badges?: Record<string, number>;
 }) {
   const items = workspaceKind === "coach" ? COACH_ITEMS : CLUB_ITEMS;
   const [open, setOpen] = useState(false);
@@ -84,18 +89,26 @@ export function AdminMenu({
           className="absolute right-0 top-full z-30 mt-2 w-56 overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900 shadow-xl"
         >
           <ul className="py-1 text-sm">
-            {items.map((it) => (
-              <li key={it.href}>
-                <Link
-                  href={it.href}
-                  onClick={() => setOpen(false)}
-                  role="menuitem"
-                  className="block px-4 py-2.5 text-zinc-300 hover:bg-zinc-800 hover:text-white"
-                >
-                  {it.label}
-                </Link>
-              </li>
-            ))}
+            {items.map((it) => {
+              const badge = it.badgeKey ? badges[it.badgeKey] : 0;
+              return (
+                <li key={it.href}>
+                  <Link
+                    href={it.href}
+                    onClick={() => setOpen(false)}
+                    role="menuitem"
+                    className="flex items-center justify-between gap-2 px-4 py-2.5 text-zinc-300 hover:bg-zinc-800 hover:text-white"
+                  >
+                    <span>{it.label}</span>
+                    {badge > 0 && (
+                      <span className="rounded-full bg-emerald-600 px-2 py-0.5 text-[10px] font-semibold text-white">
+                        {badge}
+                      </span>
+                    )}
+                  </Link>
+                </li>
+              );
+            })}
 
             {isSuperAdmin && (
               <>

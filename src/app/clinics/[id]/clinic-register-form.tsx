@@ -30,7 +30,7 @@ export function ClinicRegisterForm({
           lastName: "Apellido",
           email: "Correo",
           phone: "WhatsApp / teléfono",
-          phoneHint: "Para recordatorios y cambios de última hora.",
+          phoneHint: "Requerido — para recordatorios y cambios de última hora.",
           age: "Edad",
           rating: "Tu nivel de juego",
           ratingHint: "Si nunca has jugado, elige Principiante.",
@@ -45,7 +45,7 @@ export function ClinicRegisterForm({
           lastName: "Last name",
           email: "Email",
           phone: "WhatsApp / phone",
-          phoneHint: "Used for reminders and last-minute updates.",
+          phoneHint: "Required — used for reminders and last-minute updates.",
           age: "Age",
           rating: "Your skill level",
           ratingHint: "Pick Beginner if you haven't played before.",
@@ -111,6 +111,7 @@ export function ClinicRegisterForm({
         <Field
           label={L.phone}
           type="tel"
+          required
           value={phone}
           onChange={setPhone}
           autoComplete="tel"

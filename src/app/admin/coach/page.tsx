@@ -2,8 +2,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentMembership } from "@/lib/auth";
 import { CoachProfileForm } from "./coach-profile-form";
 import { CoachShareLinks } from "./coach-share-links";
-import { LessonRequestsPanel } from "./lesson-requests-panel";
-import type { CoachProfile, LessonRequest, LessonRequestReply } from "@/lib/types";
+import type { CoachProfile } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -19,25 +18,6 @@ export default async function AdminCoachPage() {
     .maybeSingle();
   const profile = (data ?? null) as CoachProfile | null;
 
-  let requests: LessonRequest[] = [];
-  let replies: LessonRequestReply[] = [];
-  if (profile) {
-    const [{ data: reqs }, { data: rep }] = await Promise.all([
-      admin
-        .from("lesson_requests")
-        .select("*")
-        .eq("coach_profile_id", profile.id)
-        .order("created_at", { ascending: false }),
-      admin
-        .from("lesson_request_replies")
-        .select("*")
-        .eq("workspace_id", res.member.workspace_id)
-        .order("created_at", { ascending: true }),
-    ]);
-    requests = (reqs ?? []) as LessonRequest[];
-    replies = (rep ?? []) as LessonRequestReply[];
-  }
-
   return (
     <div className="space-y-6">
       <div>
@@ -45,19 +25,11 @@ export default async function AdminCoachPage() {
         <p className="mt-1 text-sm text-zinc-400">
           The public-facing profile for this workspace. When published, it shows up on{" "}
           <span className="text-zinc-300">/coaches</span> so players can find you and request lessons.
-          Skip this if your workspace only runs tournaments and clinics.
+          Lesson requests live under <span className="text-zinc-300">Lesson requests</span> in the menu.
         </p>
       </div>
 
       {profile && <CoachShareLinks slug={profile.slug} status={profile.status} />}
-
-      {profile && (
-        <LessonRequestsPanel
-          requests={requests}
-          replies={replies}
-          coachName={profile.display_name}
-        />
-      )}
 
       <CoachProfileForm initial={profile} />
     </div>

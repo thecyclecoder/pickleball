@@ -205,6 +205,7 @@ function PlayerFieldset({
             type="tel"
             value={player.phone}
             onChange={(v) => onChange({ ...player, phone: v })}
+            required
             autoComplete="tel"
             inputMode="tel"
           />

@@ -31,6 +31,7 @@ function sanitizePlayer(p: PlayerInput | undefined, who: "Player 1" | "Player 2"
   if (!first) throw new Error(`${who}: first name is required`);
   if (!last) throw new Error(`${who}: last name is required`);
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error(`${who}: valid email is required`);
+  if (!phone) throw new Error(`${who}: phone is required`);
   if (!(RATING_OPTIONS as readonly string[]).includes(rating)) {
     throw new Error(`${who}: rating must be one of ${RATING_OPTIONS.join(", ")}`);
   }

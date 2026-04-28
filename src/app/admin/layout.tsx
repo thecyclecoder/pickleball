@@ -25,6 +25,20 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     name: wsById.get(m.workspace_id) ?? "Workspace",
   }));
 
+  // Pending lesson-request count for the bubble. Status='new' is our
+  // proxy for "no reply yet" — every reply path (composer, Mark replied,
+  // inbound webhook) auto-flips to 'contacted', so anything still 'new'
+  // genuinely needs attention. Only fetched for coach workspaces.
+  let lessonRequestPending = 0;
+  if (res.workspaceKind === "coach") {
+    const { count } = await admin
+      .from("lesson_requests")
+      .select("id", { count: "exact", head: true })
+      .eq("workspace_id", res.member.workspace_id)
+      .eq("status", "new");
+    lessonRequestPending = count ?? 0;
+  }
+
   return (
     <div className="flex min-h-screen flex-col bg-zinc-950 text-zinc-100">
       <header className="border-b border-zinc-900">
@@ -48,6 +62,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
               userEmail={res.user.email ?? null}
               isSuperAdmin={isSuperAdmin(res.user)}
               workspaceKind={res.workspaceKind}
+              badges={{ lessonRequests: lessonRequestPending }}
             />
           </div>
         </div>

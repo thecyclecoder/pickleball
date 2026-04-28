@@ -42,7 +42,7 @@ export function LessonRequestForm({
           firstName: "Nombre",
           lastName: "Apellido",
           email: "Correo",
-          phone: "Teléfono (opcional)",
+          phone: "WhatsApp / teléfono",
           skill: "Tu nivel de juego",
           skillPlaceholder: "Selecciona…",
           lessonType: "Tipo de lección",
@@ -58,7 +58,7 @@ export function LessonRequestForm({
           firstName: "First name",
           lastName: "Last name",
           email: "Email",
-          phone: "Phone (optional)",
+          phone: "WhatsApp / phone",
           skill: "Your skill level",
           skillPlaceholder: "Select…",
           lessonType: "Lesson type",
@@ -108,7 +108,7 @@ export function LessonRequestForm({
         <Field label={L.firstName} required value={firstName} onChange={setFirstName} autoComplete="given-name" />
         <Field label={L.lastName} required value={lastName} onChange={setLastName} autoComplete="family-name" />
         <Field label={L.email} type="email" required value={email} onChange={setEmail} autoComplete="email" />
-        <Field label={L.phone} type="tel" value={phone} onChange={setPhone} autoComplete="tel" />
+        <Field label={L.phone} type="tel" required value={phone} onChange={setPhone} autoComplete="tel" />
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2">

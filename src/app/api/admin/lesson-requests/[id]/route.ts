@@ -38,9 +38,10 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     }
     updates.status = body.status;
   }
-  if (body.paid !== undefined) {
-    updates.paid_at = body.paid ? new Date().toISOString() : null;
-  }
+  // Paid status moved out of lesson requests — the next step is to turn
+  // a request into a Lesson (its own row + calendar event), and the
+  // paid checkbox lives on that. lesson_requests.paid_at remains in the
+  // schema for any historical data but isn't writable through the API.
   if (Object.keys(updates).length === 0) {
     return NextResponse.json({ error: "No updates" }, { status: 400 });
   }
