@@ -11,13 +11,16 @@ import {
   type LessonRequestReply,
   type LessonType,
 } from "@/lib/types";
+import { whatsappUrl } from "@/lib/phone";
 
 export function LessonRequestsPanel({
   requests,
   replies,
+  coachName,
 }: {
   requests: LessonRequest[];
   replies: LessonRequestReply[];
+  coachName?: string;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -218,26 +221,41 @@ export function LessonRequestsPanel({
                 {isOpen && (
                   <div className="mt-3 space-y-3 rounded-lg border border-zinc-800 bg-zinc-950/40 p-3 text-xs text-zinc-300">
                     <div>
-                      <p className="text-[10px] uppercase tracking-wider text-zinc-500">Reply directly</p>
-                      <p>
+                      <p className="mb-1.5 text-[10px] uppercase tracking-wider text-zinc-500">Reply directly</p>
+                      <div className="flex flex-wrap items-center gap-2">
                         <a
                           href={`mailto:${r.email}`}
-                          className="text-emerald-400 hover:text-emerald-300"
+                          className="rounded-md border border-zinc-800 bg-zinc-900 px-2.5 py-1 text-xs text-zinc-200 hover:border-emerald-700 hover:text-emerald-400"
                         >
-                          {r.email}
+                          ✉ {r.email}
                         </a>
-                        {r.phone && (
-                          <>
-                            {" · "}
-                            <a
-                              href={`tel:${r.phone}`}
-                              className="text-emerald-400 hover:text-emerald-300"
-                            >
-                              {r.phone}
-                            </a>
-                          </>
-                        )}
-                      </p>
+                        {r.phone && (() => {
+                          const greeting = coachName
+                            ? `Hi ${r.first_name}, this is ${coachName} following up on your lesson request from Buen Tiro.`
+                            : `Hi ${r.first_name}, following up on your lesson request from Buen Tiro.`;
+                          const wa = whatsappUrl(r.phone, greeting);
+                          return (
+                            <>
+                              {wa && (
+                                <a
+                                  href={wa}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="rounded-md border border-emerald-700 bg-emerald-950/40 px-2.5 py-1 text-xs font-medium text-emerald-300 hover:bg-emerald-950/60"
+                                >
+                                  WhatsApp
+                                </a>
+                              )}
+                              <a
+                                href={`tel:${r.phone}`}
+                                className="rounded-md border border-zinc-800 bg-zinc-900 px-2.5 py-1 text-xs text-zinc-200 hover:border-emerald-700 hover:text-emerald-400"
+                              >
+                                ☎ {r.phone}
+                              </a>
+                            </>
+                          );
+                        })()}
+                      </div>
                     </div>
                     {r.goals && (
                       <div>

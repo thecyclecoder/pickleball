@@ -51,7 +51,13 @@ export default async function AdminCoachPage() {
 
       {profile && <CoachShareLinks slug={profile.slug} status={profile.status} />}
 
-      {profile && <LessonRequestsPanel requests={requests} replies={replies} />}
+      {profile && (
+        <LessonRequestsPanel
+          requests={requests}
+          replies={replies}
+          coachName={profile.display_name}
+        />
+      )}
 
       <CoachProfileForm initial={profile} />
     </div>
