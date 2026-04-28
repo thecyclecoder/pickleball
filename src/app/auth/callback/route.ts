@@ -4,7 +4,12 @@ import { createClient } from "@/lib/supabase/server";
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
-  const next = searchParams.get("next") ?? "/admin";
+  // `next` defaults to /me — the player profile is the right post-login
+  // landing for non-admins. Admins still see the Admin link in the
+  // hamburger and can navigate from there. Sign-in flows (login form,
+  // invite page) pass an explicit `next` when they want a different
+  // landing.
+  const next = searchParams.get("next") ?? "/me";
 
   if (code) {
     const supabase = await createClient();
