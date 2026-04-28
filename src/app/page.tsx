@@ -4,8 +4,8 @@ import { formatTournamentDate } from "@/lib/format";
 import { getLocale, pick, t } from "@/lib/i18n";
 import { PublicHeader } from "@/components/public-header";
 import { PublicFooter } from "@/components/public-footer";
-import { CoverSlideshow } from "@/components/cover-slideshow";
-import type { TournamentImage } from "@/lib/types";
+import { RotatingWord } from "@/components/rotating-word";
+import { largestSrc, srcSetAttr, type TournamentImage } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -87,6 +87,8 @@ export default async function Home() {
           eventsClinics: "Ver clínicas →",
           tournament: "Torneo",
           clinic: "Clínica",
+          findYourNext: "Encuentra tu próximo",
+          rotatingWords: ["torneo", "partido", "lección", "evento"],
         }
       : {
           eventsHeading: "Upcoming events",
@@ -94,6 +96,8 @@ export default async function Home() {
           eventsClinics: "All clinics →",
           tournament: "Tournament",
           clinic: "Clinic",
+          findYourNext: "Find your next",
+          rotatingWords: ["tournament", "clinic", "lesson", "match"],
         };
 
   return (
@@ -104,8 +108,10 @@ export default async function Home() {
         <p className="mb-3 text-xs font-medium uppercase tracking-[0.2em] text-emerald-500">
           {d.hero_kicker}
         </p>
-        <h1 className="mb-4 text-5xl font-bold tracking-tight text-white sm:text-6xl">
-          {d.hero_title}
+        <h1 className="mb-4 text-4xl font-bold leading-tight tracking-tight text-white sm:text-6xl">
+          <span className="block">{L.findYourNext}</span>
+          <RotatingWord words={L.rotatingWords} />
+          <span>.</span>
         </h1>
         <p className="mb-10 max-w-lg text-base text-zinc-400">{d.hero_desc}</p>
         <div className="flex flex-wrap justify-center gap-3">
@@ -139,20 +145,33 @@ export default async function Home() {
               </div>
             </div>
             <div className="grid items-start gap-0 sm:gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {events.map((e, idx) => (
+              {events.map((e) => {
+                const cover = e.images[0];
+                return (
                 <Link
                   key={e.key}
                   href={e.href}
                   className="group overflow-hidden border-b border-zinc-800 bg-zinc-900 transition-colors hover:border-emerald-600 sm:rounded-xl sm:border sm:border-zinc-800"
                 >
                   <div className="bg-zinc-800">
-                    {e.images.length > 0 ? (
-                      <CoverSlideshow
-                        images={e.images}
-                        alt={e.title}
-                        sizes="(min-width: 1024px) 320px, (min-width: 640px) 45vw, 100vw"
-                        stagger={idx * 600}
-                      />
+                    {cover ? (
+                      <picture>
+                        <source
+                          type="image/webp"
+                          srcSet={srcSetAttr(cover)}
+                          sizes="(min-width: 1024px) 320px, (min-width: 640px) 45vw, 100vw"
+                        />
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={largestSrc(cover)}
+                          srcSet={srcSetAttr(cover)}
+                          sizes="(min-width: 1024px) 320px, (min-width: 640px) 45vw, 100vw"
+                          alt={e.title}
+                          loading="lazy"
+                          decoding="async"
+                          className="block h-auto w-full"
+                        />
+                      </picture>
                     ) : e.flyer_image_url ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={e.flyer_image_url} alt={e.title} className="block h-auto w-full" />
@@ -170,7 +189,8 @@ export default async function Home() {
                     </p>
                   </div>
                 </Link>
-              ))}
+                );
+              })}
             </div>
           </div>
         </section>
