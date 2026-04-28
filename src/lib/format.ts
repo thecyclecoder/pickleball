@@ -27,6 +27,34 @@ export function formatTime(time: string, timezone: string): string {
   return tzShort ? `${base} ${tzShort}` : base;
 }
 
+/** Format a full lesson timestamp like "Sat, May 2, 2026 · 9:00 AM AST". */
+export function formatLessonWhen(startsAt: string | Date, timezone: string): string {
+  const d = typeof startsAt === "string" ? new Date(startsAt) : startsAt;
+  const date = d.toLocaleDateString("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    timeZone: timezone,
+  });
+  const time = d.toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+    timeZone: timezone,
+  });
+  const tzShort = shortTz(timezone);
+  return `${date} · ${time}${tzShort ? ` ${tzShort}` : ""}`;
+}
+
+export function formatDuration(minutes: number): string {
+  if (minutes < 60) return `${minutes} min`;
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  if (m === 0) return `${h} hr${h === 1 ? "" : "s"}`;
+  return `${h} hr${h === 1 ? "" : "s"} ${m} min`;
+}
+
 function shortTz(tz: string): string {
   try {
     const parts = new Intl.DateTimeFormat("en-US", {

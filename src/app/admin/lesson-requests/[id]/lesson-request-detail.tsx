@@ -119,9 +119,8 @@ export function LessonRequestDetail({
           <div className="flex items-center gap-2">
             <button
               type="button"
-              disabled
-              title="Coming soon: turn this request into a scheduled lesson"
-              className="rounded-md border border-zinc-800 bg-zinc-950 px-3 py-1.5 text-xs font-medium text-zinc-500"
+              onClick={() => router.push(`/admin/lessons/new?from=${request.id}`)}
+              className="rounded-md border border-emerald-700 bg-emerald-950/40 px-3 py-1.5 text-xs font-medium text-emerald-300 hover:bg-emerald-950/60"
             >
               Convert to lesson
             </button>

@@ -22,6 +22,7 @@ const CLUB_ITEMS: Item[] = [
 const COACH_ITEMS: Item[] = [
   { href: "/admin", label: "Dashboard" },
   { href: "/admin/lesson-requests", label: "Lesson requests", badgeKey: "lessonRequests" },
+  { href: "/admin/lessons", label: "Lessons" },
   { href: "/admin/clinics", label: "Clinics" },
   { href: "/admin/coach", label: "Coach profile" },
   { href: "/admin/players", label: "Players" },

@@ -720,6 +720,120 @@ Open: ${manageUrl}
   if (error) console.error("Resend send error (lesson forward):", error, "to:", toEmail);
 }
 
+type LessonScheduledEmailArgs = {
+  toEmail: string;
+  toFirstName: string;
+  coachName: string;
+  /** Pre-formatted display string, e.g. "Sat, May 2, 2026 · 9:00 AM AST" */
+  whenLabel: string;
+  durationLabel: string;
+  location: string | null;
+  googleMapsUrl: string | null;
+  notes: string | null;
+  /** URL to the public ICS download — players tap to add to Apple/Outlook */
+  icsUrl: string;
+  googleCalendarUrl: string;
+  /** Optional Reply-To override (relay address when configured) */
+  replyToAddress?: string;
+  cancelled?: boolean;
+};
+
+export async function sendLessonScheduledEmail(
+  args: LessonScheduledEmailArgs
+): Promise<void> {
+  const {
+    toEmail,
+    toFirstName,
+    coachName,
+    whenLabel,
+    durationLabel,
+    location,
+    googleMapsUrl,
+    notes,
+    icsUrl,
+    googleCalendarUrl: gcalUrl,
+    replyToAddress,
+    cancelled,
+  } = args;
+
+  const subject = cancelled
+    ? `Lesson cancelled with ${coachName}`
+    : `Lesson scheduled with ${coachName}`;
+  const headline = cancelled ? "Your lesson has been cancelled" : "Your lesson is on the calendar";
+  const intro = cancelled
+    ? `Hi ${escapeHtml(toFirstName)}, your lesson with <strong>${escapeHtml(coachName)}</strong> on ${escapeHtml(whenLabel)} has been cancelled. ${escapeHtml(coachName)} will reach out to reschedule.`
+    : `Hi ${escapeHtml(toFirstName)}, you're booked in with <strong>${escapeHtml(coachName)}</strong>. Tap below to add it to your calendar — we recommend doing it now so you don't forget.`;
+
+  const detailRow = (label: string, value: string) => `
+    <tr><td style="padding:0 16px 14px;">
+      <div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#71717a;">${label}</div>
+      <div style="font-size:14px;color:#fafafa;margin-top:2px;white-space:pre-wrap;">${escapeHtml(value)}</div>
+    </td></tr>`;
+
+  const html = `<!doctype html>
+<html><head><meta charset="utf-8" /><title>${escapeHtml(subject)}</title></head>
+<body style="margin:0;padding:0;background:#09090b;color:#fafafa;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#09090b;padding:24px 16px;">
+    <tr><td align="center">
+      <table role="presentation" width="560" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;width:100%;background:#18181b;border:1px solid #27272a;border-radius:16px;overflow:hidden;">
+        <tr><td style="padding:28px 28px 16px;">
+          <div style="font-size:20px;font-weight:700;letter-spacing:-0.5px;color:#fafafa;">Buen Tiro</div>
+          <div style="height:2px;width:40px;background:${cancelled ? "#ef4444" : "#10b981"};border-radius:2px;margin-top:6px;"></div>
+        </td></tr>
+        <tr><td style="padding:0 28px 8px;">
+          <h1 style="margin:0 0 8px;font-size:22px;line-height:1.25;color:#fafafa;font-weight:700;">${escapeHtml(headline)}</h1>
+          <p style="margin:0 0 16px;font-size:14px;line-height:1.55;color:#a1a1aa;">${intro}</p>
+        </td></tr>
+        <tr><td style="padding:0 28px 16px;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#09090b;border:1px solid #27272a;border-radius:12px;">
+            ${detailRow("When", `${whenLabel} · ${durationLabel}`)}
+            ${detailRow("Coach", coachName)}
+            ${location ? detailRow("Where", location) : ""}
+            ${googleMapsUrl ? `<tr><td style="padding:0 16px 14px;"><a href="${googleMapsUrl}" style="color:#34d399;text-decoration:none;font-size:13px;">Get directions →</a></td></tr>` : ""}
+            ${notes ? detailRow("Notes from your coach", notes) : ""}
+          </table>
+        </td></tr>
+        ${
+          cancelled
+            ? ""
+            : `
+        <tr><td style="padding:0 28px 12px;">
+          <a href="${gcalUrl}" style="display:inline-block;background:#10b981;color:#ffffff;text-decoration:none;font-weight:600;font-size:14px;padding:12px 22px;border-radius:10px;margin-right:8px;margin-bottom:8px;">Add to Google Calendar</a>
+          <a href="${icsUrl}" style="display:inline-block;background:#27272a;color:#fafafa;text-decoration:none;font-weight:600;font-size:14px;padding:12px 22px;border-radius:10px;margin-bottom:8px;">Apple / Outlook (.ics)</a>
+        </td></tr>`
+        }
+        <tr><td style="padding:16px 28px 28px;">
+          <p style="margin:0;font-size:12px;color:#71717a;line-height:1.55;">Reply to this email to message ${escapeHtml(coachName)} directly.</p>
+        </td></tr>
+      </table>
+      <p style="margin:16px 0 0;font-size:11px;color:#52525b;">Buen Tiro · <a href="${SITE_URL}" style="color:#52525b;text-decoration:none;">buentiro.app</a></p>
+    </td></tr>
+  </table>
+</body></html>`;
+
+  const text = `${headline}
+
+${stripHtml(intro)}
+
+When: ${whenLabel} · ${durationLabel}
+Coach: ${coachName}
+${location ? `Where: ${location}\n` : ""}${notes ? `Notes: ${notes}\n` : ""}
+${cancelled ? "" : `Add to Google Calendar: ${gcalUrl}\nApple / Outlook .ics: ${icsUrl}\n`}
+Reply to this email to message ${coachName} directly.
+
+— Buen Tiro (${SITE_URL})`;
+
+  const { error } = await resend().emails.send({
+    from: FROM,
+    to: toEmail,
+    replyTo: replyToAddress,
+    subject,
+    html,
+    text,
+  });
+  if (error) console.error("Resend send error (lesson scheduled):", error, "to:", toEmail);
+}
+
 function escapeHtml(s: string): string {
   return s
     .replace(/&/g, "&amp;")

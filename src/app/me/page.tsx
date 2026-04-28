@@ -13,9 +13,12 @@ import {
   type TeamStatus,
   type PaymentStatus,
   type ClinicRating,
+  type Lesson,
   type LessonRequestStatus,
   type LessonType,
 } from "@/lib/types";
+import { formatDuration, formatLessonWhen } from "@/lib/format";
+import { googleCalendarUrl } from "@/lib/ics";
 
 export const dynamic = "force-dynamic";
 
@@ -122,7 +125,12 @@ export default async function MePage() {
   const locale = await getLocale();
   const admin = createAdminClient();
 
-  const [{ data: playerData }, { data: clinicData }, { data: lessonData }] = await Promise.all([
+  const [
+    { data: playerData },
+    { data: clinicData },
+    { data: lessonData },
+    { data: scheduledData },
+  ] = await Promise.all([
     admin
       .from("players")
       .select(
@@ -160,11 +168,30 @@ export default async function MePage() {
       )
       .eq("user_id", user.id)
       .order("created_at", { ascending: false }),
+    admin
+      .from("lessons")
+      .select(`*, coach:coach_profiles (id, slug, display_name, display_name_es, avatar_url)`)
+      .eq("user_id", user.id)
+      .order("starts_at", { ascending: true }),
   ]);
 
   const playerRows = (playerData ?? []) as unknown as PlayerRow[];
   const clinicRows = (clinicData ?? []) as unknown as ClinicRow[];
   const lessonRows = (lessonData ?? []) as unknown as LessonRow[];
+  const scheduledLessons = (scheduledData ?? []) as unknown as (Lesson & {
+    coach: {
+      id: string;
+      slug: string;
+      display_name: string;
+      display_name_es: string | null;
+      avatar_url: string | null;
+    } | null;
+  })[];
+
+  const now = new Date();
+  const upcomingLessons = scheduledLessons.filter(
+    (l) => new Date(l.starts_at) >= now && l.status !== "cancelled"
+  );
 
   const items: Item[] = [];
 
@@ -253,6 +280,7 @@ export default async function MePage() {
           upcoming: "Próximos eventos",
           past: "Eventos pasados",
           lessons: "Solicitudes de lecciones",
+          scheduledLessons: "Próximas lecciones",
           empty: "No tienes inscripciones próximas.",
           noneEver: "Aún no tienes inscripciones.",
           browseTour: "Explorar torneos →",
@@ -263,6 +291,7 @@ export default async function MePage() {
           upcoming: "Upcoming events",
           past: "Past events",
           lessons: "Lesson requests",
+          scheduledLessons: "Upcoming lessons",
           empty: "You haven't registered for any upcoming events yet.",
           noneEver: "No registrations yet.",
           browseTour: "Browse tournaments →",
@@ -281,6 +310,12 @@ export default async function MePage() {
           <p className="text-sm text-zinc-400">{user.email}</p>
         </div>
 
+        {upcomingLessons.length > 0 && (
+          <div className="mb-10">
+            <ScheduledLessonsSection title={L.scheduledLessons} rows={upcomingLessons} locale={locale} />
+          </div>
+        )}
+
         <Section title={L.upcoming} items={upcoming} locale={locale} empty={L.empty} />
 
         {lessonRows.length > 0 && (
@@ -295,7 +330,7 @@ export default async function MePage() {
           </div>
         )}
 
-        {items.length === 0 && lessonRows.length === 0 && (
+        {items.length === 0 && lessonRows.length === 0 && upcomingLessons.length === 0 && (
           <div className="mt-10 rounded-xl border border-dashed border-zinc-800 bg-zinc-900/40 p-10 text-center">
             <p className="mb-4 text-sm text-zinc-400">{L.noneEver}</p>
             <div className="flex flex-wrap justify-center gap-3">
@@ -393,6 +428,101 @@ function KindBadge({ kind, locale }: { kind: "tournament" | "clinic"; locale: "e
     <span className={`rounded-md border px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wider ${cls}`}>
       {labels[kind]}
     </span>
+  );
+}
+
+function ScheduledLessonsSection({
+  title,
+  rows,
+  locale,
+}: {
+  title: string;
+  rows: (Lesson & {
+    coach: {
+      id: string;
+      slug: string;
+      display_name: string;
+      display_name_es: string | null;
+      avatar_url: string | null;
+    } | null;
+  })[];
+  locale: "en" | "es";
+}) {
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://buentiro.app";
+  return (
+    <section>
+      <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-zinc-400">{title}</h2>
+      <ul className="space-y-3">
+        {rows.map((l) => {
+          const coachName = pick<string>(
+            l.coach?.display_name ?? "Your coach",
+            l.coach?.display_name_es ?? "",
+            locale
+          );
+          const calEvent = {
+            uid: `lesson-${l.id}@buentiro.app`,
+            startsAt: l.starts_at,
+            durationMinutes: l.duration_minutes,
+            summary: `Pickleball lesson with ${coachName}`,
+            description: l.notes ?? undefined,
+            location: l.location ?? undefined,
+          };
+          const gcal = googleCalendarUrl(calEvent);
+          const ics = `${siteUrl}/api/lessons/${l.id}/ics`;
+          return (
+            <li key={l.id} className="rounded-xl border border-zinc-800 bg-zinc-900 p-5">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <p className="mb-0.5 text-xs text-zinc-500">
+                    {formatLessonWhen(l.starts_at, l.timezone)} · {formatDuration(l.duration_minutes)}
+                    {l.location && <> · {l.location}</>}
+                  </p>
+                  <h3 className="text-base font-semibold text-white">
+                    {locale === "es" ? "Lección con" : "Lesson with"} {coachName}
+                  </h3>
+                  {l.lesson_type && (
+                    <p className="mt-0.5 text-xs text-zinc-400">
+                      {lessonTypeLabel(l.lesson_type, locale)}
+                    </p>
+                  )}
+                </div>
+                {l.paid_at && (
+                  <span className="rounded-md border border-emerald-700 bg-emerald-950/30 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-emerald-400">
+                    {locale === "es" ? "Pagado" : "Paid"}
+                  </span>
+                )}
+              </div>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <a
+                  href={gcal}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="rounded-md border border-emerald-700 bg-emerald-950/40 px-2.5 py-1 text-xs font-medium text-emerald-300 hover:bg-emerald-950/60"
+                >
+                  {locale === "es" ? "Añadir a Google Calendar" : "Add to Google Calendar"}
+                </a>
+                <a
+                  href={ics}
+                  className="rounded-md border border-zinc-800 bg-zinc-950 px-2.5 py-1 text-xs text-zinc-200 hover:border-zinc-700"
+                >
+                  Apple / Outlook (.ics)
+                </a>
+                {l.google_maps_url && (
+                  <a
+                    href={l.google_maps_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="rounded-md border border-zinc-800 bg-zinc-950 px-2.5 py-1 text-xs text-zinc-200 hover:border-zinc-700"
+                  >
+                    {locale === "es" ? "Cómo llegar" : "Directions"}
+                  </a>
+                )}
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
   );
 }
 

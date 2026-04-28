@@ -354,3 +354,30 @@ export type LessonRequestReply = {
   subject: string | null;
   created_at: string;
 };
+
+export const LESSON_STATUSES = ["scheduled", "completed", "cancelled", "no_show"] as const;
+export type LessonStatus = (typeof LESSON_STATUSES)[number];
+
+export type Lesson = {
+  id: string;
+  workspace_id: string;
+  coach_profile_id: string | null;
+  lesson_request_id: string | null;
+  user_id: string | null;
+  player_first_name: string;
+  player_last_name: string;
+  player_email: string;
+  player_phone: string | null;
+  starts_at: string;
+  duration_minutes: number;
+  timezone: string;
+  location: string | null;
+  google_maps_url: string | null;
+  lesson_type: LessonType | null;
+  price_cents: number | null;
+  status: LessonStatus;
+  paid_at: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+};
