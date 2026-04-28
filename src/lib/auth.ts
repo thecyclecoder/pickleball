@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 import { createClient } from "./supabase/server";
 import { createAdminClient } from "./supabase/admin";
 import type { User } from "@supabase/supabase-js";
-import type { WorkspaceMember } from "./types";
+import type { WorkspaceKind, WorkspaceMember } from "./types";
 
 export const ACTIVE_WORKSPACE_COOKIE = "active_workspace_id";
 
@@ -24,6 +24,8 @@ export type MembershipResult =
       status: "ok";
       user: User;
       member: WorkspaceMember;
+      /** Active workspace's kind — drives admin nav + which write APIs accept. */
+      workspaceKind: WorkspaceKind;
       allMemberships: WorkspaceMember[];
       canCreateWorkspace: boolean;
     };
@@ -83,10 +85,18 @@ export async function getCurrentMembership(): Promise<MembershipResult> {
   const active =
     memberships.find((m) => m.workspace_id === activeId) ?? memberships[0];
 
+  const { data: ws } = await admin
+    .from("workspaces")
+    .select("kind")
+    .eq("id", active.workspace_id)
+    .maybeSingle();
+  const workspaceKind: WorkspaceKind = ws?.kind === "coach" ? "coach" : "club";
+
   return {
     status: "ok",
     user,
     member: active,
+    workspaceKind,
     allMemberships: memberships,
     canCreateWorkspace: isSuperAdmin(user),
   };

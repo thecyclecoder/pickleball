@@ -28,10 +28,16 @@ export type TournamentStatus = "draft" | "published" | "cancelled" | "completed"
 export type TeamStatus = "registered" | "confirmed" | "waitlisted" | "cancelled";
 export type PaymentStatus = "unpaid" | "paid" | "refunded";
 
+export type WorkspaceKind = "club" | "coach";
+
 export type Workspace = {
   id: string;
   name: string;
   owner_email: string;
+  /** "club" = runs tournaments + clinics; "coach" = solo-coach storefront
+   *  with coach profile + clinics (no tournaments). Drives admin nav and
+   *  which APIs accept writes. */
+  kind: WorkspaceKind;
   payment_info: {
     venmo_qr_url?: string;
     ath_qr_url?: string;

@@ -23,32 +23,56 @@ type LessonRequestRow = {
   created_at: string;
 };
 
+type ClinicRowSummary = {
+  id: string;
+  slug: string;
+  title: string;
+  status: string;
+  start_date: string;
+  end_date: string | null;
+  timezone: string;
+  registrations: { id: string; status: string }[];
+};
+
 export default async function AdminDashboard() {
   const res = await getCurrentMembership();
   if (res.status !== "ok") return null; // layout handles redirect/denied
   const admin = createAdminClient();
+  const isCoach = res.workspaceKind === "coach";
 
   const [
     { data: tournaments },
     { count: teamCount },
     { data: coachProfile },
+    { data: clinicRows },
   ] = await Promise.all([
-    admin
-      .from("tournaments")
-      .select(`id, slug, title, status, start_date, end_date, timezone, teams (id, status)`)
-      .eq("workspace_id", res.member.workspace_id)
-      .order("start_date", { ascending: false })
-      .limit(5),
-    admin
-      .from("teams")
-      .select("id", { count: "exact", head: true })
-      .eq("workspace_id", res.member.workspace_id)
-      .neq("status", "cancelled"),
+    isCoach
+      ? Promise.resolve({ data: [] as never[] })
+      : admin
+          .from("tournaments")
+          .select(`id, slug, title, status, start_date, end_date, timezone, teams (id, status)`)
+          .eq("workspace_id", res.member.workspace_id)
+          .order("start_date", { ascending: false })
+          .limit(5),
+    isCoach
+      ? Promise.resolve({ count: 0 })
+      : admin
+          .from("teams")
+          .select("id", { count: "exact", head: true })
+          .eq("workspace_id", res.member.workspace_id)
+          .neq("status", "cancelled"),
     admin
       .from("coach_profiles")
       .select("id, slug, display_name, status")
       .eq("workspace_id", res.member.workspace_id)
       .maybeSingle(),
+    admin
+      .from("clinics")
+      .select(`id, slug, title, status, start_date, end_date, timezone,
+               registrations:clinic_registrations (id, status)`)
+      .eq("workspace_id", res.member.workspace_id)
+      .order("start_date", { ascending: false })
+      .limit(5),
   ]);
 
   let lessonRequests: LessonRequestRow[] = [];
@@ -65,9 +89,21 @@ export default async function AdminDashboard() {
     ).length;
   }
 
-  const all = tournaments ?? [];
-  const published = all.filter((t) => t.status === "published").length;
-  const drafts = all.filter((t) => t.status === "draft").length;
+  const allTournaments = tournaments ?? [];
+  const tournamentsPublished = allTournaments.filter((t) => t.status === "published").length;
+  const tournamentsDrafts = allTournaments.filter((t) => t.status === "draft").length;
+
+  const allClinics = (clinicRows ?? []) as ClinicRowSummary[];
+  const clinicsPublished = allClinics.filter((c) => c.status === "published").length;
+  const clinicsDrafts = allClinics.filter((c) => c.status === "draft").length;
+  const clinicSignupCount = allClinics.reduce(
+    (n, c) => n + c.registrations.filter((r) => r.status !== "cancelled").length,
+    0
+  );
+
+  const primaryCta = isCoach
+    ? { href: "/admin/clinics/new", label: "+ New clinic" }
+    : { href: "/admin/tournaments/new", label: "+ New tournament" };
 
   return (
     <div>
@@ -77,29 +113,28 @@ export default async function AdminDashboard() {
           <p className="text-sm text-zinc-400">Welcome back, {res.user.email}</p>
         </div>
         <Link
-          href="/admin/tournaments/new"
+          href={primaryCta.href}
           className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-500"
         >
-          + New tournament
+          {primaryCta.label}
         </Link>
       </div>
 
-      <div
-        className={`mb-8 grid gap-3 ${
-          coachProfile ? "sm:grid-cols-2 lg:grid-cols-4" : "sm:grid-cols-3"
-        }`}
-      >
-        <Stat label="Published" value={published} />
-        <Stat label="Drafts" value={drafts} />
-        <Stat label="Registered teams" value={teamCount ?? 0} />
-        {coachProfile && (
-          <Stat
-            label="New lesson requests"
-            value={newLessonRequestCount}
-            highlight={newLessonRequestCount > 0}
-          />
-        )}
-      </div>
+      {isCoach ? (
+        <CoachStats
+          published={clinicsPublished}
+          drafts={clinicsDrafts}
+          signups={clinicSignupCount}
+          newLessonRequests={newLessonRequestCount}
+        />
+      ) : (
+        <ClubStats
+          published={tournamentsPublished}
+          drafts={tournamentsDrafts}
+          teams={teamCount ?? 0}
+          newLessonRequests={coachProfile ? newLessonRequestCount : null}
+        />
+      )}
 
       {coachProfile && (
         <div className="mb-6 rounded-xl border border-zinc-800 bg-zinc-900">
@@ -151,38 +186,173 @@ export default async function AdminDashboard() {
         </div>
       )}
 
-      <div className="rounded-xl border border-zinc-800 bg-zinc-900">
-        <div className="flex items-center justify-between border-b border-zinc-800 px-5 py-3">
-          <h2 className="text-sm font-semibold text-white">Recent tournaments</h2>
-          <Link href="/admin/tournaments" className="text-xs text-emerald-500 hover:text-emerald-400">
-            View all →
-          </Link>
-        </div>
-        {all.length === 0 ? (
-          <p className="px-5 py-8 text-center text-sm text-zinc-500">
-            No tournaments yet. <Link href="/admin/tournaments/new" className="text-emerald-500 hover:text-emerald-400">Create one</Link>.
-          </p>
-        ) : (
-          <ul className="divide-y divide-zinc-800">
-            {all.map((t) => {
-              const active = (t.teams ?? []).filter((x: { status: string }) => x.status !== "cancelled").length;
-              return (
-                <li key={t.id} className="flex items-center justify-between gap-3 px-5 py-3 text-sm">
-                  <div className="min-w-0">
-                    <Link href={`/admin/tournaments/${t.id}`} className="font-medium text-white hover:text-emerald-400">
-                      {t.title}
-                    </Link>
-                    <p className="text-xs text-zinc-500">
-                      {formatTournamentDate(t.start_date, t.end_date, t.timezone)} · {active} team{active === 1 ? "" : "s"}
-                    </p>
-                  </div>
-                  <StatusBadge status={t.status} />
-                </li>
-              );
-            })}
-          </ul>
-        )}
+      {isCoach ? (
+        <ClinicsList
+          clinics={allClinics}
+          empty="No clinics yet. Create one to start taking signups."
+          createHref="/admin/clinics/new"
+        />
+      ) : (
+        <TournamentsList tournaments={allTournaments} />
+      )}
+    </div>
+  );
+}
+
+function ClubStats({
+  published,
+  drafts,
+  teams,
+  newLessonRequests,
+}: {
+  published: number;
+  drafts: number;
+  teams: number;
+  newLessonRequests: number | null;
+}) {
+  return (
+    <div
+      className={`mb-8 grid gap-3 ${
+        newLessonRequests != null ? "sm:grid-cols-2 lg:grid-cols-4" : "sm:grid-cols-3"
+      }`}
+    >
+      <Stat label="Published" value={published} />
+      <Stat label="Drafts" value={drafts} />
+      <Stat label="Registered teams" value={teams} />
+      {newLessonRequests != null && (
+        <Stat
+          label="New lesson requests"
+          value={newLessonRequests}
+          highlight={newLessonRequests > 0}
+        />
+      )}
+    </div>
+  );
+}
+
+function CoachStats({
+  published,
+  drafts,
+  signups,
+  newLessonRequests,
+}: {
+  published: number;
+  drafts: number;
+  signups: number;
+  newLessonRequests: number;
+}) {
+  return (
+    <div className="mb-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <Stat label="Published clinics" value={published} />
+      <Stat label="Draft clinics" value={drafts} />
+      <Stat label="Clinic signups" value={signups} />
+      <Stat
+        label="New lesson requests"
+        value={newLessonRequests}
+        highlight={newLessonRequests > 0}
+      />
+    </div>
+  );
+}
+
+function ClinicsList({
+  clinics,
+  empty,
+  createHref,
+}: {
+  clinics: ClinicRowSummary[];
+  empty: string;
+  createHref: string;
+}) {
+  return (
+    <div className="rounded-xl border border-zinc-800 bg-zinc-900">
+      <div className="flex items-center justify-between border-b border-zinc-800 px-5 py-3">
+        <h2 className="text-sm font-semibold text-white">Recent clinics</h2>
+        <Link href="/admin/clinics" className="text-xs text-emerald-500 hover:text-emerald-400">
+          View all →
+        </Link>
       </div>
+      {clinics.length === 0 ? (
+        <p className="px-5 py-8 text-center text-sm text-zinc-500">
+          {empty}{" "}
+          <Link href={createHref} className="text-emerald-500 hover:text-emerald-400">
+            Create one
+          </Link>
+          .
+        </p>
+      ) : (
+        <ul className="divide-y divide-zinc-800">
+          {clinics.map((c) => {
+            const active = c.registrations.filter((r) => r.status !== "cancelled").length;
+            return (
+              <li key={c.id} className="flex items-center justify-between gap-3 px-5 py-3 text-sm">
+                <div className="min-w-0">
+                  <Link href={`/admin/clinics/${c.id}`} className="font-medium text-white hover:text-emerald-400">
+                    {c.title}
+                  </Link>
+                  <p className="text-xs text-zinc-500">
+                    {formatTournamentDate(c.start_date, c.end_date, c.timezone)} · {active} signup{active === 1 ? "" : "s"}
+                  </p>
+                </div>
+                <StatusBadge status={c.status} />
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function TournamentsList({
+  tournaments,
+}: {
+  tournaments: {
+    id: string;
+    title: string;
+    status: string;
+    start_date: string;
+    end_date: string | null;
+    timezone: string;
+    teams: { id: string; status: string }[];
+  }[];
+}) {
+  return (
+    <div className="rounded-xl border border-zinc-800 bg-zinc-900">
+      <div className="flex items-center justify-between border-b border-zinc-800 px-5 py-3">
+        <h2 className="text-sm font-semibold text-white">Recent tournaments</h2>
+        <Link href="/admin/tournaments" className="text-xs text-emerald-500 hover:text-emerald-400">
+          View all →
+        </Link>
+      </div>
+      {tournaments.length === 0 ? (
+        <p className="px-5 py-8 text-center text-sm text-zinc-500">
+          No tournaments yet.{" "}
+          <Link href="/admin/tournaments/new" className="text-emerald-500 hover:text-emerald-400">
+            Create one
+          </Link>
+          .
+        </p>
+      ) : (
+        <ul className="divide-y divide-zinc-800">
+          {tournaments.map((t) => {
+            const active = (t.teams ?? []).filter((x) => x.status !== "cancelled").length;
+            return (
+              <li key={t.id} className="flex items-center justify-between gap-3 px-5 py-3 text-sm">
+                <div className="min-w-0">
+                  <Link href={`/admin/tournaments/${t.id}`} className="font-medium text-white hover:text-emerald-400">
+                    {t.title}
+                  </Link>
+                  <p className="text-xs text-zinc-500">
+                    {formatTournamentDate(t.start_date, t.end_date, t.timezone)} · {active} team{active === 1 ? "" : "s"}
+                  </p>
+                </div>
+                <StatusBadge status={t.status} />
+              </li>
+            );
+          })}
+        </ul>
+      )}
     </div>
   );
 }

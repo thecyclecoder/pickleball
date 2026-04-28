@@ -27,6 +27,12 @@ export async function PATCH(req: Request) {
   if (body.payment_info && typeof body.payment_info === "object") {
     updates.payment_info = body.payment_info;
   }
+  if (body.kind === "club" || body.kind === "coach") {
+    if (auth.ctx.member.role !== "owner") {
+      return NextResponse.json({ error: "Only owners can change workspace type" }, { status: 403 });
+    }
+    updates.kind = body.kind;
+  }
   if (Object.keys(updates).length === 0) {
     return NextResponse.json({ error: "No updates" }, { status: 400 });
   }

@@ -33,6 +33,7 @@ export async function POST(req: Request) {
   const body = await req.json().catch(() => ({}));
   const name = (body.name ?? "").toString().trim();
   if (!name) return NextResponse.json({ error: "Name required" }, { status: 400 });
+  const kind = body.kind === "coach" ? "coach" : "club";
 
   const ownerEmail = res.user.email;
   if (!ownerEmail) {
@@ -42,7 +43,7 @@ export async function POST(req: Request) {
   const admin = createAdminClient();
   const { data: workspace, error } = await admin
     .from("workspaces")
-    .insert({ name, owner_email: ownerEmail })
+    .insert({ name, owner_email: ownerEmail, kind })
     .select()
     .single();
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

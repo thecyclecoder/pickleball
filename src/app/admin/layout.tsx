@@ -47,6 +47,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             <AdminMenu
               userEmail={res.user.email ?? null}
               isSuperAdmin={isSuperAdmin(res.user)}
+              workspaceKind={res.workspaceKind}
             />
           </div>
         </div>

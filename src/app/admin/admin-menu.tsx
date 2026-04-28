@@ -6,13 +6,23 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
 type Item = { href: string; label: string };
+type WorkspaceKind = "club" | "coach";
 
-const ITEMS: Item[] = [
+const CLUB_ITEMS: Item[] = [
   { href: "/admin", label: "Dashboard" },
   { href: "/admin/tournaments", label: "Tournaments" },
   { href: "/admin/clinics", label: "Clinics" },
-  { href: "/admin/coach", label: "Coach profile" },
   { href: "/admin/formats", label: "Formats" },
+  { href: "/admin/players", label: "Players" },
+  { href: "/admin/members", label: "Members" },
+  { href: "/admin/workspaces", label: "Workspaces" },
+  { href: "/admin/settings", label: "Settings" },
+];
+
+const COACH_ITEMS: Item[] = [
+  { href: "/admin", label: "Dashboard" },
+  { href: "/admin/clinics", label: "Clinics" },
+  { href: "/admin/coach", label: "Coach profile" },
   { href: "/admin/players", label: "Players" },
   { href: "/admin/members", label: "Members" },
   { href: "/admin/workspaces", label: "Workspaces" },
@@ -26,10 +36,13 @@ const SUPER_ADMIN_ITEMS: Item[] = [
 export function AdminMenu({
   userEmail,
   isSuperAdmin = false,
+  workspaceKind = "club",
 }: {
   userEmail: string | null;
   isSuperAdmin?: boolean;
+  workspaceKind?: WorkspaceKind;
 }) {
+  const items = workspaceKind === "coach" ? COACH_ITEMS : CLUB_ITEMS;
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const router = useRouter();
@@ -71,7 +84,7 @@ export function AdminMenu({
           className="absolute right-0 top-full z-30 mt-2 w-56 overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900 shadow-xl"
         >
           <ul className="py-1 text-sm">
-            {ITEMS.map((it) => (
+            {items.map((it) => (
               <li key={it.href}>
                 <Link
                   href={it.href}

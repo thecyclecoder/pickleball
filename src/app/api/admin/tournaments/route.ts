@@ -26,6 +26,21 @@ export async function POST(req: Request) {
   const auth = await requireMember();
   if (!auth.ok) return auth.response;
 
+  // Coach-kind workspaces don't run tournaments. Reject server-side so
+  // the menu's nav-level hide isn't the only guard.
+  const admin0 = createAdminClient();
+  const { data: ws } = await admin0
+    .from("workspaces")
+    .select("kind")
+    .eq("id", auth.ctx.member.workspace_id)
+    .maybeSingle();
+  if (ws?.kind === "coach") {
+    return NextResponse.json(
+      { error: "This workspace is set up as a coach. Switch to a club to create tournaments." },
+      { status: 403 }
+    );
+  }
+
   const body = await req.json().catch(() => ({}));
   const {
     title,

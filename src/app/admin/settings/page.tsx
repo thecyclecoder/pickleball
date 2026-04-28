@@ -22,7 +22,11 @@ export default async function AdminSettingsPage() {
     <div>
       <h1 className="mb-6 text-2xl font-bold tracking-tight text-white">Settings</h1>
       <div className="space-y-6">
-        <SettingsForm workspace={workspace} canEdit={res.member.role !== "member"} />
+        <SettingsForm
+        workspace={workspace}
+        canEdit={res.member.role !== "member"}
+        isOwner={res.member.role === "owner"}
+      />
         <PushToggle />
       </div>
     </div>
