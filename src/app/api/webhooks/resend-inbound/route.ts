@@ -49,6 +49,36 @@ type ResendInboundPayload = {
   };
 } & Record<string, unknown>;
 
+/**
+ * Resend's email.received webhook delivers METADATA only — body content
+ * lives behind a separate GET. Without this, html/text in the webhook
+ * payload are typically null and we'd forward an empty message.
+ */
+async function fetchEmailBody(emailId: string): Promise<{
+  html: string | null;
+  text: string | null;
+}> {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) return { html: null, text: null };
+  try {
+    const res = await fetch(`https://api.resend.com/emails/receiving/${emailId}`, {
+      headers: { Authorization: `Bearer ${apiKey}` },
+    });
+    if (!res.ok) {
+      console.error("fetchEmailBody non-OK:", res.status, await res.text().catch(() => ""));
+      return { html: null, text: null };
+    }
+    const data = await res.json();
+    return {
+      html: typeof data.html === "string" ? data.html : null,
+      text: typeof data.text === "string" ? data.text : null,
+    };
+  } catch (e) {
+    console.error("fetchEmailBody failed:", e);
+    return { html: null, text: null };
+  }
+}
+
 function pickEmail(field: unknown): string {
   if (!field) return "";
   if (typeof field === "string") {
@@ -111,11 +141,24 @@ export async function POST(req: Request) {
     pickName((data as ResendInboundPayload["data"])?.from) || fromEmail.split("@")[0];
   const toAddrs = pickToAddresses((data as ResendInboundPayload["data"])?.to);
   const subject = (data as ResendInboundPayload["data"])?.subject ?? null;
-  const text = (data as ResendInboundPayload["data"])?.text ?? null;
-  const html = (data as ResendInboundPayload["data"])?.html ?? null;
+  const emailId = (data as ResendInboundPayload["data"])?.email_id ?? null;
   const messageId =
     (data as ResendInboundPayload["data"])?.message_id ??
     pickHeader((data as ResendInboundPayload["data"])?.headers, "message-id");
+
+  // Fetch body separately — Resend's webhook payload only carries
+  // metadata. Fall back to whatever the payload happened to include
+  // (some payloads do include a small text snippet) so we never end up
+  // with literally nothing.
+  let html: string | null =
+    (data as ResendInboundPayload["data"])?.html ?? null;
+  let text: string | null =
+    (data as ResendInboundPayload["data"])?.text ?? null;
+  if (emailId && !html && !text) {
+    const fetched = await fetchEmailBody(emailId);
+    html = fetched.html;
+    text = fetched.text;
+  }
 
   if (!fromEmail) {
     return NextResponse.json({ ok: true, ignored: "no-from" });
