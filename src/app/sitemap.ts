@@ -7,16 +7,31 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://buentiro.app";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const admin = createAdminClient();
-  const { data: tournaments } = await admin
-    .from("tournaments")
-    .select("slug, updated_at, start_date")
-    .eq("status", "published")
-    .order("start_date", { ascending: false });
+  const [{ data: tournaments }, { data: clinics }] = await Promise.all([
+    admin
+      .from("tournaments")
+      .select("slug, updated_at, start_date")
+      .eq("status", "published")
+      .order("start_date", { ascending: false }),
+    admin
+      .from("clinics")
+      .select("slug, updated_at, start_date")
+      .eq("status", "published")
+      .order("start_date", { ascending: false }),
+  ]);
 
   const now = new Date();
+
   const tournamentEntries: MetadataRoute.Sitemap = (tournaments ?? []).map((t) => ({
     url: `${SITE_URL}/tournaments/${t.slug}`,
     lastModified: t.updated_at ? new Date(t.updated_at) : now,
+    changeFrequency: "daily",
+    priority: 0.8,
+  }));
+
+  const clinicEntries: MetadataRoute.Sitemap = (clinics ?? []).map((c) => ({
+    url: `${SITE_URL}/clinics/${c.slug}`,
+    lastModified: c.updated_at ? new Date(c.updated_at) : now,
     changeFrequency: "daily",
     priority: 0.8,
   }));
@@ -29,6 +44,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "daily",
       priority: 0.9,
     },
+    {
+      url: `${SITE_URL}/clinics`,
+      lastModified: now,
+      changeFrequency: "daily",
+      priority: 0.9,
+    },
     ...tournamentEntries,
+    ...clinicEntries,
   ];
 }

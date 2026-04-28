@@ -9,22 +9,92 @@ import type { TournamentImage } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
+type EventCard = {
+  key: string;
+  kind: "tournament" | "clinic";
+  href: string;
+  title: string;
+  start_date: string;
+  end_date: string | null;
+  timezone: string;
+  location: string;
+  images: TournamentImage[];
+  flyer_image_url: string | null;
+};
+
 export default async function Home() {
   const locale = await getLocale();
   const d = t(locale);
 
   const admin = createAdminClient();
-  const { data: tournaments } = await admin
-    .from("tournaments")
-    .select(
-      "id, slug, title, title_es, start_date, end_date, timezone, location, location_es, flyer_image_url, images"
-    )
-    .eq("status", "published")
-    .gte("start_date", new Date().toISOString().slice(0, 10))
-    .order("start_date", { ascending: true })
-    .limit(3);
+  const today = new Date().toISOString().slice(0, 10);
 
-  const upcoming = tournaments ?? [];
+  const [{ data: tournaments }, { data: clinics }] = await Promise.all([
+    admin
+      .from("tournaments")
+      .select(
+        "id, slug, title, title_es, start_date, end_date, timezone, location, location_es, flyer_image_url, images"
+      )
+      .eq("status", "published")
+      .gte("start_date", today)
+      .order("start_date", { ascending: true })
+      .limit(6),
+    admin
+      .from("clinics")
+      .select(
+        "id, slug, title, title_es, start_date, end_date, timezone, location, location_es, flyer_image_url, images"
+      )
+      .eq("status", "published")
+      .gte("start_date", today)
+      .order("start_date", { ascending: true })
+      .limit(6),
+  ]);
+
+  const events: EventCard[] = [
+    ...(tournaments ?? []).map((tt) => ({
+      key: `t:${tt.id}`,
+      kind: "tournament" as const,
+      href: `/tournaments/${tt.slug}`,
+      title: pick<string>(tt.title, tt.title_es ?? "", locale),
+      start_date: tt.start_date,
+      end_date: tt.end_date,
+      timezone: tt.timezone,
+      location: pick<string>(tt.location, tt.location_es ?? "", locale),
+      images: (tt.images as TournamentImage[] | null) ?? [],
+      flyer_image_url: tt.flyer_image_url,
+    })),
+    ...(clinics ?? []).map((c) => ({
+      key: `c:${c.id}`,
+      kind: "clinic" as const,
+      href: `/clinics/${c.slug}`,
+      title: pick<string>(c.title, c.title_es ?? "", locale),
+      start_date: c.start_date,
+      end_date: c.end_date,
+      timezone: c.timezone,
+      location: pick<string>(c.location, c.location_es ?? "", locale),
+      images: (c.images as TournamentImage[] | null) ?? [],
+      flyer_image_url: c.flyer_image_url,
+    })),
+  ]
+    .sort((a, b) => a.start_date.localeCompare(b.start_date))
+    .slice(0, 6);
+
+  const L =
+    locale === "es"
+      ? {
+          eventsHeading: "Próximos eventos",
+          eventsAll: "Ver torneos →",
+          eventsClinics: "Ver clínicas →",
+          tournament: "Torneo",
+          clinic: "Clínica",
+        }
+      : {
+          eventsHeading: "Upcoming events",
+          eventsAll: "All tournaments →",
+          eventsClinics: "All clinics →",
+          tournament: "Tournament",
+          clinic: "Clinic",
+        };
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -38,61 +108,69 @@ export default async function Home() {
           {d.hero_title}
         </h1>
         <p className="mb-10 max-w-lg text-base text-zinc-400">{d.hero_desc}</p>
-        <Link
-          href="/tournaments"
-          className="rounded-lg bg-emerald-600 px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-emerald-500"
-        >
-          {d.hero_cta}
-        </Link>
+        <div className="flex flex-wrap justify-center gap-3">
+          <Link
+            href="/tournaments"
+            className="rounded-lg bg-emerald-600 px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-emerald-500"
+          >
+            {d.hero_cta}
+          </Link>
+          <Link
+            href="/clinics"
+            className="rounded-lg border border-zinc-800 bg-zinc-900 px-6 py-3 text-sm font-medium text-zinc-200 transition-colors hover:border-zinc-700 hover:text-white"
+          >
+            {locale === "es" ? "Ver clínicas" : "View clinics"}
+          </Link>
+        </div>
       </section>
 
-      {upcoming.length > 0 && (
+      {events.length > 0 && (
         <section className="border-t border-zinc-900 bg-zinc-950">
           <div className="mx-auto max-w-5xl px-0 py-12 sm:px-6 sm:py-16">
-            <div className="mb-6 flex items-baseline justify-between px-4 sm:px-0">
-              <h2 className="text-xl font-semibold text-white">{d.upcoming}</h2>
-              <Link href="/tournaments" className="text-sm text-emerald-500 hover:text-emerald-400">
-                {d.see_all}
-              </Link>
+            <div className="mb-6 flex items-baseline justify-between gap-3 px-4 sm:px-0">
+              <h2 className="text-xl font-semibold text-white">{L.eventsHeading}</h2>
+              <div className="flex items-baseline gap-3 text-sm">
+                <Link href="/tournaments" className="text-emerald-500 hover:text-emerald-400">
+                  {L.eventsAll}
+                </Link>
+                <Link href="/clinics" className="text-emerald-500 hover:text-emerald-400">
+                  {L.eventsClinics}
+                </Link>
+              </div>
             </div>
             <div className="grid gap-0 sm:gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {upcoming.map((tt, idx) => {
-                const imgs = (tt.images as TournamentImage[] | null) ?? [];
-                return (
+              {events.map((e, idx) => (
                 <Link
-                  key={tt.id}
-                  href={`/tournaments/${tt.slug}`}
+                  key={e.key}
+                  href={e.href}
                   className="group overflow-hidden border-b border-zinc-800 bg-zinc-900 transition-colors hover:border-emerald-600 sm:rounded-xl sm:border sm:border-zinc-800"
                 >
                   <div className="aspect-[9/16] bg-zinc-800">
-                    {imgs.length > 0 ? (
+                    {e.images.length > 0 ? (
                       <CoverSlideshow
-                        images={imgs}
-                        alt={tt.title}
+                        images={e.images}
+                        alt={e.title}
                         sizes="(min-width: 1024px) 320px, (min-width: 640px) 45vw, 100vw"
                         stagger={idx * 600}
                       />
-                    ) : tt.flyer_image_url ? (
+                    ) : e.flyer_image_url ? (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={tt.flyer_image_url}
-                        alt={tt.title}
-                        className="h-full w-full object-cover"
-                      />
+                      <img src={e.flyer_image_url} alt={e.title} className="h-full w-full object-cover" />
                     ) : null}
                   </div>
                   <div className="p-4">
+                    <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-emerald-500">
+                      {e.kind === "tournament" ? L.tournament : L.clinic}
+                    </p>
                     <h3 className="mb-1 text-sm font-medium text-white group-hover:text-emerald-400">
-                      {pick(tt.title, tt.title_es, locale)}
+                      {e.title}
                     </h3>
                     <p className="text-xs text-zinc-500">
-                      {formatTournamentDate(tt.start_date, tt.end_date, tt.timezone)} ·{" "}
-                      {pick(tt.location, tt.location_es, locale)}
+                      {formatTournamentDate(e.start_date, e.end_date, e.timezone)} · {e.location}
                     </p>
                   </div>
                 </Link>
-                );
-              })}
+              ))}
             </div>
           </div>
         </section>

@@ -3,14 +3,19 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { formatTournamentDate, formatTime } from "@/lib/format";
-import { categoryLabelI18n, getLocale, pick, t } from "@/lib/i18n";
+import { categoryLabelI18n, getLocale, pick } from "@/lib/i18n";
 import { PublicHeader } from "@/components/public-header";
 import { PublicFooter } from "@/components/public-footer";
-import type { CategoryType, TeamStatus, PaymentStatus } from "@/lib/types";
+import type {
+  CategoryType,
+  TeamStatus,
+  PaymentStatus,
+  ClinicRating,
+} from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
-type Row = {
+type PlayerRow = {
   id: string;
   first_name: string;
   last_name: string;
@@ -42,14 +47,44 @@ type Row = {
       location_es: string | null;
       status: string;
     };
-    players: {
-      id: string;
-      first_name: string;
-      last_name: string;
-      email: string;
-      is_captain: boolean;
-    }[];
+    players: { id: string; first_name: string; last_name: string }[];
   };
+};
+
+type ClinicRow = {
+  id: string;
+  status: "registered" | "waitlisted" | "cancelled";
+  paid_at: string | null;
+  rating_self: ClinicRating;
+  age: number;
+  registered_at: string;
+  clinic: {
+    id: string;
+    slug: string;
+    title: string;
+    title_es: string | null;
+    start_date: string;
+    end_date: string | null;
+    start_time: string;
+    timezone: string;
+    location: string;
+    location_es: string | null;
+  };
+};
+
+type Item = {
+  key: string;
+  kind: "tournament" | "clinic";
+  href: string;
+  title: string;
+  start_date: string;
+  end_date: string | null;
+  start_time: string;
+  timezone: string;
+  location: string;
+  status: string;
+  paid: boolean;
+  subtitle: string;
 };
 
 export default async function MePage() {
@@ -57,42 +92,123 @@ export default async function MePage() {
   if (!user) redirect("/login?next=/me");
 
   const locale = await getLocale();
-  const d = t(locale);
-
   const admin = createAdminClient();
-  // Inner-joined on teams / tournament / category: a player row whose team
-  // was hard-deleted (team_id=null after detach) simply won't appear here.
-  // We *do* still preserve that history in the admin Players view, which
-  // queries by players.workspace_id instead.
-  const { data } = await admin
-    .from("players")
-    .select(
-      `id, first_name, last_name, email, rating, is_captain,
-       team:teams!inner (
-         id, status, payment_status, registered_at,
-         category:tournament_categories!inner (id, type, rating, label, label_es),
-         tournament:tournaments!inner (
-           id, slug, title, title_es, start_date, end_date, start_time, timezone,
-           location, location_es, status
-         ),
-         players (id, first_name, last_name, email, is_captain)
-       )`
-    )
-    .eq("user_id", user.id)
-    .order("registered_at", { ascending: false, referencedTable: "teams" });
 
-  const rows = (data ?? []) as unknown as Row[];
+  const [{ data: playerData }, { data: clinicData }] = await Promise.all([
+    admin
+      .from("players")
+      .select(
+        `id, first_name, last_name, email, rating, is_captain,
+         team:teams!inner (
+           id, status, payment_status, registered_at,
+           category:tournament_categories!inner (id, type, rating, label, label_es),
+           tournament:tournaments!inner (
+             id, slug, title, title_es, start_date, end_date, start_time, timezone,
+             location, location_es, status
+           ),
+           players (id, first_name, last_name)
+         )`
+      )
+      .eq("user_id", user.id)
+      .order("registered_at", { ascending: false, referencedTable: "teams" }),
+    admin
+      .from("clinic_registrations")
+      .select(
+        `id, status, paid_at, rating_self, age, registered_at,
+         clinic:clinics!inner (
+           id, slug, title, title_es, start_date, end_date, start_time, timezone,
+           location, location_es
+         )`
+      )
+      .eq("user_id", user.id),
+  ]);
+
+  const playerRows = (playerData ?? []) as unknown as PlayerRow[];
+  const clinicRows = (clinicData ?? []) as unknown as ClinicRow[];
+
+  const items: Item[] = [];
+
+  for (const r of playerRows) {
+    const tour = r.team.tournament;
+    const title = pick<string>(tour.title, tour.title_es ?? "", locale);
+    const location = pick<string>(tour.location, tour.location_es ?? "", locale);
+    const catLabel = categoryLabelI18n(r.team.category, locale);
+    const teammate = r.team.players.find((p) => p.id !== r.id);
+    items.push({
+      key: `t:${r.team.id}`,
+      kind: "tournament",
+      href: `/me/registrations/${r.team.id}`,
+      title,
+      start_date: tour.start_date,
+      end_date: tour.end_date,
+      start_time: tour.start_time,
+      timezone: tour.timezone,
+      location,
+      status: r.team.status,
+      paid: r.team.payment_status === "paid",
+      subtitle: teammate
+        ? `${catLabel} · ${locale === "es" ? "con" : "with"} ${teammate.first_name} ${teammate.last_name}`
+        : catLabel,
+    });
+  }
+
+  for (const r of clinicRows) {
+    const c = r.clinic;
+    const title = pick<string>(c.title, c.title_es ?? "", locale);
+    const location = pick<string>(c.location, c.location_es ?? "", locale);
+    const ratingLabel =
+      r.rating_self === "beginner"
+        ? locale === "es" ? "Principiante" : "Beginner"
+        : r.rating_self;
+    items.push({
+      key: `c:${r.id}`,
+      kind: "clinic",
+      href: `/clinics/${c.slug}`,
+      title,
+      start_date: c.start_date,
+      end_date: c.end_date,
+      start_time: c.start_time,
+      timezone: c.timezone,
+      location,
+      status: r.status,
+      paid: !!r.paid_at,
+      subtitle: `${locale === "es" ? "Clínica" : "Clinic"} · ${ratingLabel}`,
+    });
+  }
+
   const today = new Date().toISOString().slice(0, 10);
-  const upcoming = rows.filter((r) => (r.team.tournament.end_date ?? r.team.tournament.start_date) >= today);
-  const past = rows.filter((r) => (r.team.tournament.end_date ?? r.team.tournament.start_date) < today);
+  const upcoming = items
+    .filter((i) => (i.end_date ?? i.start_date) >= today)
+    .sort((a, b) => a.start_date.localeCompare(b.start_date));
+  const past = items
+    .filter((i) => (i.end_date ?? i.start_date) < today)
+    .sort((a, b) => b.start_date.localeCompare(a.start_date));
 
   const meta = user.user_metadata ?? {};
   const displayName = [meta.first_name, meta.last_name].filter(Boolean).join(" ") || user.email;
 
+  const L =
+    locale === "es"
+      ? {
+          upcoming: "Próximos eventos",
+          past: "Eventos pasados",
+          empty: "No tienes inscripciones próximas.",
+          noneEver: "Aún no tienes inscripciones.",
+          browseTour: "Explorar torneos →",
+          browseClin: "Explorar clínicas →",
+        }
+      : {
+          upcoming: "Upcoming events",
+          past: "Past events",
+          empty: "You haven't registered for any upcoming events yet.",
+          noneEver: "No registrations yet.",
+          browseTour: "Browse tournaments →",
+          browseClin: "Browse clinics →",
+        };
+
   return (
     <div className="flex min-h-screen flex-col bg-zinc-950">
       <PublicHeader />
-
       <main className="mx-auto w-full max-w-4xl flex-1 px-4 py-6 sm:px-6 sm:py-10">
         <div className="mb-8">
           <h1 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">
@@ -101,29 +217,34 @@ export default async function MePage() {
           <p className="text-sm text-zinc-400">{user.email}</p>
         </div>
 
-        <Section title="Upcoming tournaments" rows={upcoming} locale={locale} dict={d} empty="You haven't registered for any upcoming tournaments yet." />
+        <Section title={L.upcoming} items={upcoming} locale={locale} empty={L.empty} />
 
         {past.length > 0 && (
           <div className="mt-10">
-            <Section title="Past tournaments" rows={past} locale={locale} dict={d} empty="" dim />
+            <Section title={L.past} items={past} locale={locale} empty="" dim />
           </div>
         )}
 
-        {rows.length === 0 && (
+        {items.length === 0 && (
           <div className="mt-10 rounded-xl border border-dashed border-zinc-800 bg-zinc-900/40 p-10 text-center">
-            <p className="mb-3 text-sm text-zinc-400">
-              No registrations yet.
-            </p>
-            <Link
-              href="/tournaments"
-              className="inline-block rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-500"
-            >
-              Browse tournaments →
-            </Link>
+            <p className="mb-4 text-sm text-zinc-400">{L.noneEver}</p>
+            <div className="flex flex-wrap justify-center gap-3">
+              <Link
+                href="/tournaments"
+                className="inline-block rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-500"
+              >
+                {L.browseTour}
+              </Link>
+              <Link
+                href="/clinics"
+                className="inline-block rounded-lg border border-zinc-800 bg-zinc-900 px-4 py-2 text-sm font-medium text-zinc-200 hover:border-zinc-700 hover:text-white"
+              >
+                {L.browseClin}
+              </Link>
+            </div>
           </div>
         )}
       </main>
-
       <PublicFooter />
     </div>
   );
@@ -131,98 +252,93 @@ export default async function MePage() {
 
 function Section({
   title,
-  rows,
+  items,
   locale,
   empty,
   dim,
 }: {
   title: string;
-  rows: Row[];
+  items: Item[];
   locale: "en" | "es";
-  dict: ReturnType<typeof t>;
   empty: string;
   dim?: boolean;
 }) {
-  if (rows.length === 0 && !empty) return null;
+  if (items.length === 0 && !empty) return null;
   return (
     <section>
       <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-zinc-400">{title}</h2>
-      {rows.length === 0 ? (
+      {items.length === 0 ? (
         <p className="rounded-xl border border-dashed border-zinc-800 p-6 text-center text-sm text-zinc-500">
           {empty}
         </p>
       ) : (
         <ul className={`space-y-3 ${dim ? "opacity-70" : ""}`}>
-          {rows.map((r) => {
-            const tour = r.team.tournament;
-            const title = pick<string>(tour.title, tour.title_es ?? "", locale);
-            const location = pick<string>(tour.location, tour.location_es ?? "", locale);
-            const catLabel = categoryLabelI18n(
-              { type: r.team.category.type, rating: r.team.category.rating, label: r.team.category.label, label_es: r.team.category.label_es },
-              locale
-            );
-            const teammate = r.team.players.find((p) => p.id !== r.id);
-            return (
-              <li key={r.team.id} className="rounded-xl border border-zinc-800 bg-zinc-900">
-                <Link
-                  href={`/me/registrations/${r.team.id}`}
-                  className="flex flex-wrap items-start justify-between gap-3 px-5 py-4 hover:bg-zinc-900/50"
-                >
-                  <div className="min-w-0 flex-1">
-                    <p className="mb-0.5 text-xs text-zinc-500">
-                      {formatTournamentDate(tour.start_date, tour.end_date, tour.timezone)} ·{" "}
-                      {formatTime(tour.start_time, tour.timezone)} · {location}
-                    </p>
-                    <h3 className="mb-1 text-base font-semibold text-white">{title}</h3>
-                    <p className="text-sm text-zinc-400">
-                      {catLabel}
-                      {teammate && (
-                        <>
-                          {" · with "}
-                          <span className="text-zinc-200">
-                            {teammate.first_name} {teammate.last_name}
-                          </span>
-                        </>
-                      )}
-                    </p>
-                  </div>
-                  <div className="flex flex-col items-end gap-1">
-                    <StatusBadge status={r.team.status} />
-                    <PaymentBadge status={r.team.payment_status} />
-                  </div>
-                </Link>
-              </li>
-            );
-          })}
+          {items.map((i) => (
+            <li key={i.key} className="rounded-xl border border-zinc-800 bg-zinc-900">
+              <Link
+                href={i.href}
+                className="flex flex-wrap items-start justify-between gap-3 px-5 py-4 hover:bg-zinc-900/50"
+              >
+                <div className="min-w-0 flex-1">
+                  <p className="mb-0.5 text-xs text-zinc-500">
+                    {formatTournamentDate(i.start_date, i.end_date, i.timezone)} ·{" "}
+                    {formatTime(i.start_time, i.timezone)} · {i.location}
+                  </p>
+                  <h3 className="mb-1 flex items-center gap-2 text-base font-semibold text-white">
+                    <span>{i.title}</span>
+                    <KindBadge kind={i.kind} locale={locale} />
+                  </h3>
+                  <p className="text-sm text-zinc-400">{i.subtitle}</p>
+                </div>
+                <div className="flex flex-col items-end gap-1">
+                  <StatusBadge status={i.status} locale={locale} />
+                  {i.paid && (
+                    <span className="rounded-md border border-emerald-700 bg-emerald-950/30 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-emerald-400">
+                      {locale === "es" ? "Pagado" : "Paid"}
+                    </span>
+                  )}
+                </div>
+              </Link>
+            </li>
+          ))}
         </ul>
       )}
     </section>
   );
 }
 
-function StatusBadge({ status }: { status: TeamStatus }) {
-  const map: Record<TeamStatus, string> = {
-    registered: "border-emerald-800 bg-emerald-950/40 text-emerald-300",
-    confirmed: "border-emerald-800 bg-emerald-950/40 text-emerald-300",
-    waitlisted: "border-amber-800 bg-amber-950/40 text-amber-300",
-    cancelled: "border-red-900 bg-red-950/40 text-red-300",
+function KindBadge({ kind, locale }: { kind: "tournament" | "clinic"; locale: "en" | "es" }) {
+  const labels = {
+    tournament: locale === "es" ? "Torneo" : "Tournament",
+    clinic: locale === "es" ? "Clínica" : "Clinic",
   };
+  const cls = kind === "clinic" ? "border-amber-800 text-amber-400" : "border-zinc-700 text-zinc-400";
   return (
-    <span className={`rounded-md border px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider ${map[status]}`}>
-      {status}
+    <span className={`rounded-md border px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wider ${cls}`}>
+      {labels[kind]}
     </span>
   );
 }
 
-function PaymentBadge({ status }: { status: PaymentStatus }) {
-  const map: Record<PaymentStatus, string> = {
-    unpaid: "border-zinc-700 text-zinc-400",
-    paid: "border-emerald-700 bg-emerald-950/30 text-emerald-400",
-    refunded: "border-zinc-700 text-zinc-500",
+function StatusBadge({ status, locale }: { status: string; locale: "en" | "es" }) {
+  const enLabels: Record<string, { label: string; cls: string }> = {
+    registered: { label: "Registered", cls: "border-emerald-800 bg-emerald-950/40 text-emerald-300" },
+    confirmed: { label: "Confirmed", cls: "border-emerald-800 bg-emerald-950/40 text-emerald-300" },
+    waitlisted: { label: "Waitlisted", cls: "border-amber-800 bg-amber-950/40 text-amber-300" },
+    cancelled: { label: "Cancelled", cls: "border-red-900 bg-red-950/40 text-red-300" },
   };
+  const esLabels: Record<string, string> = {
+    registered: "Inscrito",
+    confirmed: "Confirmado",
+    waitlisted: "Lista de espera",
+    cancelled: "Cancelado",
+  };
+  const meta = enLabels[status];
+  if (!meta) return null;
+  const label = locale === "es" ? esLabels[status] ?? meta.label : meta.label;
   return (
-    <span className={`rounded-md border px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider ${map[status]}`}>
-      {status}
+    <span className={`rounded-md border px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider ${meta.cls}`}>
+      {label}
     </span>
   );
 }
