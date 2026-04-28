@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { cleanEmailBody } from "@/lib/email-cleaner";
-import { sendLessonForwardEmail } from "@/lib/email";
+import { sendForwardedAliasEmail, sendLessonForwardEmail } from "@/lib/email";
 import { sendPushToUsers } from "@/lib/push-server";
 import {
   parseReplyAddress,
@@ -9,6 +9,8 @@ import {
   replyAddressFor,
   verifyToken,
 } from "@/lib/lesson-reply-token";
+
+const APEX_DOMAIN = "buentiro.app";
 
 /**
  * Inbound webhook for the lesson-reply relay.
@@ -119,8 +121,11 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, ignored: "no-from" });
   }
 
-  // Find which To address belongs to us — there can be multiple if the
-  // sender Cc'd people. We pick the first that matches our shape.
+  // Two inbound channels share this webhook:
+  //   1. lesson-reply relay: lr-<id>-<hmac>@replies.buentiro.app
+  //   2. apex aliases:        <local>@buentiro.app
+  // We try the relay match first; if no To address is in that shape but
+  // one is at the apex, fall through to alias forwarding.
   let parsed: ReturnType<typeof parseReplyAddress> | null = null;
   let matchedAddress: string | null = null;
   for (const addr of toAddrs) {
@@ -131,7 +136,20 @@ export async function POST(req: Request) {
       break;
     }
   }
+
   if (!parsed || !matchedAddress) {
+    // Fall through to apex alias handling.
+    const apexAddr = toAddrs.find((a) => a.endsWith(`@${APEX_DOMAIN}`));
+    if (apexAddr) {
+      return forwardApexAlias({
+        apexAddr,
+        fromEmail,
+        fromName,
+        subject,
+        text,
+        html,
+      });
+    }
     return NextResponse.json({ ok: true, ignored: "no-relay-address" });
   }
 
@@ -268,6 +286,66 @@ export async function POST(req: Request) {
   }
 
   return NextResponse.json({ ok: true });
+}
+
+/**
+ * Apex alias forwarding. Receives an email addressed to <local>@buentiro.app,
+ * looks up an active alias, cleans the body, and forwards a branded copy
+ * to the alias owner with Reply-To set to the original sender.
+ */
+async function forwardApexAlias(args: {
+  apexAddr: string;
+  fromEmail: string;
+  fromName: string;
+  subject: string | null;
+  text: string | null;
+  html: string | null;
+}) {
+  const { apexAddr, fromEmail, fromName, subject, text, html } = args;
+  const localPart = apexAddr.split("@")[0]?.toLowerCase();
+  if (!localPart) {
+    return NextResponse.json({ ok: true, ignored: "apex-no-local-part" });
+  }
+
+  // Don't forward delivery failure / mailer-daemon traffic — those tend
+  // to be loops or noise. Same for our own no-reply (which shouldn't
+  // happen but doesn't hurt to guard).
+  if (
+    /^(no-reply|noreply|mailer-daemon|postmaster|bounces?)$/i.test(localPart)
+  ) {
+    return NextResponse.json({ ok: true, ignored: "apex-system-address" });
+  }
+
+  const admin = createAdminClient();
+  const { data: alias } = await admin
+    .from("email_aliases")
+    .select("id, local_part, forward_to_email, active, workspace_id")
+    .eq("local_part", localPart)
+    .eq("active", true)
+    .maybeSingle();
+
+  if (!alias) {
+    return NextResponse.json({ ok: true, ignored: "apex-no-alias", localPart });
+  }
+
+  // Loop guard: if the configured forward_to is itself a buentiro.app
+  // address (it shouldn't be — the API blocks this — but defensive),
+  // skip it instead of looping.
+  if (alias.forward_to_email.toLowerCase().endsWith(`@${APEX_DOMAIN}`)) {
+    return NextResponse.json({ ok: true, ignored: "apex-self-forward" });
+  }
+
+  const cleaned = cleanEmailBody(html ?? text ?? "", fromEmail);
+  await sendForwardedAliasEmail({
+    toEmail: alias.forward_to_email,
+    alias: alias.local_part,
+    fromName,
+    fromEmail,
+    subject,
+    body: cleaned || text || "(empty)",
+  }).catch((e) => console.error("Apex alias forward failed:", e));
+
+  return NextResponse.json({ ok: true, forwarded: alias.local_part });
 }
 
 function insertDashes(idShort: string): string {

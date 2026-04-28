@@ -834,6 +834,83 @@ Reply to this email to message ${coachName} directly.
   if (error) console.error("Resend send error (lesson scheduled):", error, "to:", toEmail);
 }
 
+type ForwardedAliasEmailArgs = {
+  /** Workspace member's real inbox we're delivering to */
+  toEmail: string;
+  /** Local part of the buentiro.app alias that received the message */
+  alias: string;
+  /** Original sender as we received it */
+  fromName: string;
+  fromEmail: string;
+  subject: string | null;
+  /** Cleaned body text (post email-cleaner) */
+  body: string;
+};
+
+/**
+ * Forwards an inbound email that landed at <alias>@buentiro.app to the
+ * workspace member's real inbox. The original sender's address goes
+ * into Reply-To so the recipient can hit Reply in their normal mail
+ * client and the response goes straight back to the sender — Buen Tiro
+ * is just the relay, not a thread participant in the middle.
+ */
+export async function sendForwardedAliasEmail(
+  args: ForwardedAliasEmailArgs
+): Promise<void> {
+  const { toEmail, alias, fromName, fromEmail, subject, body } = args;
+  const displaySubject = subject?.trim() || "(no subject)";
+  const headline = `New message to ${alias}@buentiro.app`;
+
+  const html = `<!doctype html>
+<html><head><meta charset="utf-8" /><title>${escapeHtml(displaySubject)}</title></head>
+<body style="margin:0;padding:0;background:#09090b;color:#fafafa;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#09090b;padding:24px 16px;">
+    <tr><td align="center">
+      <table role="presentation" width="640" cellpadding="0" cellspacing="0" border="0" style="max-width:640px;width:100%;background:#18181b;border:1px solid #27272a;border-radius:16px;overflow:hidden;">
+        <tr><td style="padding:24px 28px 12px;">
+          <div style="font-size:18px;font-weight:700;letter-spacing:-0.5px;color:#fafafa;">Buen Tiro</div>
+          <div style="height:2px;width:36px;background:#10b981;border-radius:2px;margin-top:6px;"></div>
+        </td></tr>
+        <tr><td style="padding:0 28px 8px;">
+          <p style="margin:0 0 4px;font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#71717a;">${escapeHtml(headline)}</p>
+          <h1 style="margin:0 0 4px;font-size:18px;line-height:1.3;color:#fafafa;font-weight:600;">${escapeHtml(displaySubject)}</h1>
+          <p style="margin:0 0 16px;font-size:13px;color:#a1a1aa;">From <strong>${escapeHtml(fromName || fromEmail)}</strong> &lt;${escapeHtml(fromEmail)}&gt;</p>
+        </td></tr>
+        <tr><td style="padding:0 28px 16px;">
+          <div style="background:#09090b;border:1px solid #27272a;border-radius:12px;padding:16px;font-size:14px;line-height:1.6;color:#fafafa;white-space:pre-wrap;">${escapeHtml(body)}</div>
+        </td></tr>
+        <tr><td style="padding:0 28px 24px;">
+          <p style="margin:0;font-size:12px;color:#71717a;line-height:1.55;">
+            Reply to this email and your response goes straight to ${escapeHtml(fromEmail)}. Buen Tiro is just the relay — they won&apos;t see your real address unless you reply.
+          </p>
+        </td></tr>
+      </table>
+      <p style="margin:16px 0 0;font-size:11px;color:#52525b;">Forwarded by Buen Tiro · <a href="${SITE_URL}" style="color:#52525b;text-decoration:none;">buentiro.app</a></p>
+    </td></tr>
+  </table>
+</body></html>`;
+
+  const text = `${headline}
+
+Subject: ${displaySubject}
+From: ${fromName ? `${fromName} <${fromEmail}>` : fromEmail}
+
+${body}
+
+---
+Reply to this email and your response goes straight to ${fromEmail}. Buen Tiro is just the relay.`;
+
+  const { error } = await resend().emails.send({
+    from: FROM,
+    to: toEmail,
+    replyTo: fromEmail,
+    subject: `[${alias}@] ${displaySubject}`,
+    html,
+    text,
+  });
+  if (error) console.error("Resend send error (forwarded alias):", error, "to:", toEmail);
+}
+
 function escapeHtml(s: string): string {
   return s
     .replace(/&/g, "&amp;")

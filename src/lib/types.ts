@@ -117,6 +117,17 @@ export type TournamentCourt = {
   created_at: string;
 };
 
+export type EmailAlias = {
+  id: string;
+  workspace_id: string;
+  local_part: string;
+  forward_to_email: string;
+  created_by_user_id: string | null;
+  active: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
 export type TournamentFormat = {
   id: string;
   workspace_id: string;
