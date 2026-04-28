@@ -591,6 +591,72 @@ Manage in admin: ${manageUrl}
   if (error) console.error("Resend send error (lesson req coach):", error, "to:", args.toEmail);
 }
 
+type LessonReplyEmailArgs = {
+  toEmail: string;
+  toFirstName: string;
+  coachName: string;
+  coachReplyToEmail: string;
+  body: string;
+  coachUrl: string;
+};
+
+export async function sendLessonReplyEmail(args: LessonReplyEmailArgs): Promise<void> {
+  const { toEmail, toFirstName, coachName, coachReplyToEmail, body, coachUrl } = args;
+  const subject = `${coachName} replied to your lesson request`;
+  const headline = `${coachName} replied to your lesson request`;
+
+  const html = `<!doctype html>
+<html><head><meta charset="utf-8" /><title>${escapeHtml(subject)}</title></head>
+<body style="margin:0;padding:0;background:#09090b;color:#fafafa;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#09090b;padding:24px 16px;">
+    <tr><td align="center">
+      <table role="presentation" width="560" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;width:100%;background:#18181b;border:1px solid #27272a;border-radius:16px;overflow:hidden;">
+        <tr><td style="padding:28px 28px 16px;">
+          <div style="font-size:20px;font-weight:700;letter-spacing:-0.5px;color:#fafafa;">Buen Tiro</div>
+          <div style="height:2px;width:40px;background:#10b981;border-radius:2px;margin-top:6px;"></div>
+        </td></tr>
+        <tr><td style="padding:0 28px 8px;">
+          <h1 style="margin:0 0 8px;font-size:22px;line-height:1.25;color:#fafafa;font-weight:700;">${escapeHtml(headline)}</h1>
+          <p style="margin:0 0 16px;font-size:14px;line-height:1.55;color:#a1a1aa;">Hi ${escapeHtml(toFirstName)}, ${escapeHtml(coachName)} sent you the following message:</p>
+        </td></tr>
+        <tr><td style="padding:0 28px 16px;">
+          <div style="background:#09090b;border:1px solid #27272a;border-radius:12px;padding:16px;font-size:14px;line-height:1.6;color:#fafafa;white-space:pre-wrap;">${escapeHtml(body)}</div>
+        </td></tr>
+        <tr><td style="padding:0 28px 12px;">
+          <p style="margin:0 0 12px;font-size:13px;color:#a1a1aa;line-height:1.55;">Reply to this email and your message will go straight to ${escapeHtml(coachName)}.</p>
+        </td></tr>
+        <tr><td style="padding:16px 28px 28px;">
+          <p style="margin:0;font-size:12px;color:#71717a;line-height:1.55;">Coach profile: <a href="${coachUrl}" style="color:#34d399;text-decoration:none;">${escapeHtml(coachUrl)}</a></p>
+        </td></tr>
+      </table>
+      <p style="margin:16px 0 0;font-size:11px;color:#52525b;">Buen Tiro · <a href="${SITE_URL}" style="color:#52525b;text-decoration:none;">buentiro.app</a></p>
+    </td></tr>
+  </table>
+</body></html>`;
+
+  const text = `${headline}
+
+Hi ${toFirstName}, ${coachName} sent you the following message:
+
+${body}
+
+Reply to this email and your message will go straight to ${coachName}.
+
+Coach profile: ${coachUrl}
+
+— Buen Tiro (${SITE_URL})`;
+
+  const { error } = await resend().emails.send({
+    from: FROM,
+    to: toEmail,
+    replyTo: coachReplyToEmail,
+    subject,
+    html,
+    text,
+  });
+  if (error) console.error("Resend send error (lesson reply):", error, "to:", toEmail);
+}
+
 function escapeHtml(s: string): string {
   return s
     .replace(/&/g, "&amp;")

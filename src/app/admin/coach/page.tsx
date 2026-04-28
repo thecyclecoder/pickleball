@@ -3,7 +3,7 @@ import { getCurrentMembership } from "@/lib/auth";
 import { CoachProfileForm } from "./coach-profile-form";
 import { CoachShareLinks } from "./coach-share-links";
 import { LessonRequestsPanel } from "./lesson-requests-panel";
-import type { CoachProfile, LessonRequest } from "@/lib/types";
+import type { CoachProfile, LessonRequest, LessonRequestReply } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -20,13 +20,22 @@ export default async function AdminCoachPage() {
   const profile = (data ?? null) as CoachProfile | null;
 
   let requests: LessonRequest[] = [];
+  let replies: LessonRequestReply[] = [];
   if (profile) {
-    const { data: reqs } = await admin
-      .from("lesson_requests")
-      .select("*")
-      .eq("coach_profile_id", profile.id)
-      .order("created_at", { ascending: false });
+    const [{ data: reqs }, { data: rep }] = await Promise.all([
+      admin
+        .from("lesson_requests")
+        .select("*")
+        .eq("coach_profile_id", profile.id)
+        .order("created_at", { ascending: false }),
+      admin
+        .from("lesson_request_replies")
+        .select("*")
+        .eq("workspace_id", res.member.workspace_id)
+        .order("created_at", { ascending: true }),
+    ]);
     requests = (reqs ?? []) as LessonRequest[];
+    replies = (rep ?? []) as LessonRequestReply[];
   }
 
   return (
@@ -42,7 +51,7 @@ export default async function AdminCoachPage() {
 
       {profile && <CoachShareLinks slug={profile.slug} status={profile.status} />}
 
-      {profile && <LessonRequestsPanel requests={requests} />}
+      {profile && <LessonRequestsPanel requests={requests} replies={replies} />}
 
       <CoachProfileForm initial={profile} />
     </div>

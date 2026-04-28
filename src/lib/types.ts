@@ -335,3 +335,13 @@ export type LessonRequest = {
   created_at: string;
   updated_at: string;
 };
+
+export type LessonRequestReply = {
+  id: string;
+  lesson_request_id: string;
+  workspace_id: string;
+  sender_user_id: string | null;
+  sender_email: string;
+  body: string;
+  created_at: string;
+};
