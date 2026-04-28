@@ -219,6 +219,7 @@ export type Clinic = {
   status: TournamentStatus;
   registration_open: boolean;
   capacity: number | null;
+  waitlist_capacity: number | null;
   payment_qr_url: string | null;
   payment_instructions: string | null;
   payment_instructions_es: string | null;

@@ -65,15 +65,28 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     );
   }
 
-  // Capacity check → waitlist if full
+  // Capacity check → waitlist if at-cap; reject if waitlist also at-cap.
   let assignedStatus: "registered" | "waitlisted" = "registered";
   if (clinic.capacity != null) {
-    const { count } = await admin
+    const { data: liveRegs } = await admin
       .from("clinic_registrations")
-      .select("id", { count: "exact", head: true })
+      .select("status")
       .eq("clinic_id", clinic.id)
       .neq("status", "cancelled");
-    if ((count ?? 0) >= clinic.capacity) assignedStatus = "waitlisted";
+    const registeredCount = (liveRegs ?? []).filter((r) => r.status === "registered").length;
+    const waitlistCount = (liveRegs ?? []).filter((r) => r.status === "waitlisted").length;
+    if (registeredCount >= clinic.capacity) {
+      if (
+        clinic.waitlist_capacity != null &&
+        waitlistCount >= clinic.waitlist_capacity
+      ) {
+        return NextResponse.json(
+          { error: "This clinic is full. Registration is closed." },
+          { status: 409 }
+        );
+      }
+      assignedStatus = "waitlisted";
+    }
   }
 
   const currentUser = await getCurrentUser();

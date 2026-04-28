@@ -104,8 +104,14 @@ export default async function ClinicDetailPage({
       : [];
   const coaches = [...c.coaches].sort((a, b) => a.sort_order - b.sort_order);
   const active = c.registrations.filter((r) => r.status !== "cancelled");
-  const spotsOpen = c.capacity != null ? c.capacity - active.length : null;
+  const registered = active.filter((r) => r.status === "registered");
+  const waitlisted = active.filter((r) => r.status === "waitlisted");
+  const spotsOpen = c.capacity != null ? Math.max(0, c.capacity - registered.length) : null;
   const isFull = spotsOpen != null && spotsOpen <= 0;
+  // Auto-close once both the roster and the waitlist are at capacity.
+  const waitlistFull =
+    c.waitlist_capacity != null && waitlisted.length >= c.waitlist_capacity;
+  const completelyFull = isFull && waitlistFull;
 
   const L =
     locale === "es"
@@ -113,21 +119,30 @@ export default async function ClinicDetailPage({
           kicker: "Clínica",
           coaches: "Entrenadores",
           register: "Inscríbete",
-          participants: "Participantes inscritos",
+          participantsRegistered: "Inscritos",
+          participantsWaitlist: "Lista de espera",
           noParticipants: "Aún no hay inscritos.",
           spotsLeft: (n: number) => `${n} espacio${n === 1 ? "" : "s"} disponible${n === 1 ? "" : "s"}`,
           waitlistOnly: "Solo lista de espera",
+          waitlistRemaining: (n: number) => `${n} en lista de espera disponible${n === 1 ? "" : "s"}`,
           unlimited: "Espacios ilimitados",
+          full: "Llena",
+          fullClosed: "Esta clínica está llena. La inscripción está cerrada.",
         }
       : {
           kicker: "Clinic",
           coaches: "Coaches",
           register: "Sign up",
-          participants: "Registered participants",
+          participantsRegistered: "Registered",
+          participantsWaitlist: "Waitlist",
           noParticipants: "No one has signed up yet.",
           spotsLeft: (n: number) => `${n} spot${n === 1 ? "" : "s"} open`,
           waitlistOnly: "Waitlist only",
+          waitlistRemaining: (n: number) =>
+            `${n} waitlist spot${n === 1 ? "" : "s"} open`,
           unlimited: "Open enrollment",
+          full: "Full",
+          fullClosed: "This clinic is full. Registration is closed.",
         };
 
   const eventJsonLd = {
@@ -215,16 +230,20 @@ export default async function ClinicDetailPage({
               <div>
                 <dt className="text-[10px] font-medium uppercase tracking-wider text-zinc-500">{d.label_registration}</dt>
                 <dd className="mt-0.5">
-                  {c.registration_open ? (
-                    spotsOpen == null ? (
-                      <span className="text-emerald-500">{L.unlimited}</span>
-                    ) : spotsOpen > 0 ? (
-                      <span className="text-emerald-500">{L.spotsLeft(spotsOpen)}</span>
-                    ) : (
-                      <span className="text-amber-500">{L.waitlistOnly}</span>
-                    )
+                  {!c.registration_open || completelyFull ? (
+                    <span className="text-zinc-500">
+                      {completelyFull ? L.full : d.registration_closed}
+                    </span>
+                  ) : spotsOpen == null ? (
+                    <span className="text-emerald-500">{L.unlimited}</span>
+                  ) : spotsOpen > 0 ? (
+                    <span className="text-emerald-500">{L.spotsLeft(spotsOpen)}</span>
+                  ) : c.waitlist_capacity != null ? (
+                    <span className="text-amber-500">
+                      {L.waitlistRemaining(c.waitlist_capacity - waitlisted.length)}
+                    </span>
                   ) : (
-                    <span className="text-zinc-500">{d.registration_closed}</span>
+                    <span className="text-amber-500">{L.waitlistOnly}</span>
                   )}
                 </dd>
               </div>
@@ -275,41 +294,112 @@ export default async function ClinicDetailPage({
               </section>
             )}
 
-            {c.registration_open && (
+            {c.registration_open && !completelyFull && (
               <section className="mb-8">
                 <h2 className="mb-3 text-lg font-semibold text-white sm:text-xl">{L.register}</h2>
                 <ClinicRegisterForm clinicSlug={c.slug} isFull={isFull} locale={locale} />
               </section>
             )}
-
-            <section className="mb-10">
-              <h2 className="mb-3 text-lg font-semibold text-white sm:text-xl">{L.participants}</h2>
-              {active.length === 0 ? (
-                <p className="rounded-lg border border-dashed border-zinc-800 px-4 py-3 text-xs text-zinc-500">
-                  {L.noParticipants}
+            {completelyFull && (
+              <section className="mb-8 rounded-xl border border-amber-800 bg-amber-950/20 p-5 text-center sm:p-6">
+                <p className="text-sm font-semibold uppercase tracking-wider text-amber-400">
+                  {L.full}
                 </p>
-              ) : (
-                <ul className="divide-y divide-zinc-800 overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900">
-                  {active.map((r, i) => (
-                    <li key={r.id} className="flex items-center justify-between gap-2 px-4 py-3 text-sm">
-                      <div className="min-w-0 truncate">
-                        <span className="mr-2 text-xs text-zinc-500">#{i + 1}</span>
-                        {r.first_name} {r.last_name}
-                      </div>
-                      <span className="text-xs text-zinc-500">
-                        {r.rating_self === "beginner" ? (locale === "es" ? "Principiante" : "Beginner") : r.rating_self}
-                        {" · "}
-                        {locale === "es" ? "edad" : "age"} {r.age}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </section>
+                <p className="mt-2 text-sm text-amber-100/80">{L.fullClosed}</p>
+              </section>
+            )}
+
+            <ParticipantList
+              title={`${L.participantsRegistered}${
+                c.capacity != null ? ` (${registered.length} / ${c.capacity})` : ` (${registered.length})`
+              }`}
+              rows={registered}
+              empty={L.noParticipants}
+              tone="emerald"
+              locale={locale}
+            />
+
+            {(waitlisted.length > 0 || c.waitlist_capacity != null) && (
+              <div className="mt-6">
+                <ParticipantList
+                  title={`${L.participantsWaitlist}${
+                    c.waitlist_capacity != null
+                      ? ` (${waitlisted.length} / ${c.waitlist_capacity})`
+                      : ` (${waitlisted.length})`
+                  }`}
+                  rows={waitlisted}
+                  empty=""
+                  tone="amber"
+                  locale={locale}
+                />
+              </div>
+            )}
           </div>
         </div>
       </main>
       <PublicFooter />
     </div>
+  );
+}
+
+type ParticipantRow = {
+  id: string;
+  first_name: string;
+  last_name: string;
+  rating_self: string;
+  age: number;
+};
+
+function ParticipantList({
+  title,
+  rows,
+  empty,
+  tone,
+  locale,
+}: {
+  title: string;
+  rows: ParticipantRow[];
+  empty: string;
+  tone: "emerald" | "amber";
+  locale: "en" | "es";
+}) {
+  const titleColor = tone === "amber" ? "text-amber-400" : "text-zinc-400";
+  if (rows.length === 0 && !empty) {
+    return (
+      <section>
+        <h2 className={`mb-3 text-sm font-semibold uppercase tracking-wider ${titleColor}`}>{title}</h2>
+        <p className="rounded-lg border border-dashed border-zinc-800 px-4 py-3 text-xs text-zinc-500">
+          {locale === "es" ? "Aún no hay nadie en lista de espera." : "No one on the waitlist yet."}
+        </p>
+      </section>
+    );
+  }
+  return (
+    <section>
+      <h2 className={`mb-3 text-sm font-semibold uppercase tracking-wider ${titleColor}`}>{title}</h2>
+      {rows.length === 0 ? (
+        <p className="rounded-lg border border-dashed border-zinc-800 px-4 py-3 text-xs text-zinc-500">
+          {empty}
+        </p>
+      ) : (
+        <ul className="divide-y divide-zinc-800 overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900">
+          {rows.map((r, i) => (
+            <li key={r.id} className="flex items-center justify-between gap-2 px-4 py-3 text-sm">
+              <div className="min-w-0 truncate">
+                <span className="mr-2 text-xs text-zinc-500">#{i + 1}</span>
+                {r.first_name} {r.last_name}
+              </div>
+              <span className="text-xs text-zinc-500">
+                {r.rating_self === "beginner"
+                  ? locale === "es" ? "Principiante" : "Beginner"
+                  : r.rating_self}
+                {" · "}
+                {locale === "es" ? "edad" : "age"} {r.age}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }

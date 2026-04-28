@@ -24,6 +24,7 @@ const ALLOWED = [
   "status",
   "registration_open",
   "capacity",
+  "waitlist_capacity",
   "payment_qr_url",
   "payment_instructions",
   "payment_instructions_es",

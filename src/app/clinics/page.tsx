@@ -38,6 +38,7 @@ type Row = {
   location: string;
   location_es: string | null;
   capacity: number | null;
+  waitlist_capacity: number | null;
   registration_open: boolean;
   coaches: { id: string; name: string }[];
   registrations: { id: string; status: string }[];
@@ -51,7 +52,7 @@ export default async function ClinicsListPage() {
     .from("clinics")
     .select(
       `id, slug, title, title_es, description, description_es, flyer_image_url, images,
-       start_date, end_date, start_time, timezone, location, location_es, capacity,
+       start_date, end_date, start_time, timezone, location, location_es, capacity, waitlist_capacity,
        registration_open,
        coaches:clinic_coaches (id, name),
        registrations:clinic_registrations (id, status)`
@@ -69,6 +70,7 @@ export default async function ClinicsListPage() {
           spotsLeft: (n: number) => `${n} espacio${n === 1 ? "" : "s"} disponible${n === 1 ? "" : "s"}`,
           waitlistOnly: "Solo lista de espera",
           unlimited: "Espacios ilimitados",
+          full: "Llena",
           coaches: (n: number) => `${n} coach${n === 1 ? "" : "es"}`,
         }
       : {
@@ -78,6 +80,7 @@ export default async function ClinicsListPage() {
           spotsLeft: (n: number) => `${n} spot${n === 1 ? "" : "s"} open`,
           waitlistOnly: "Waitlist only",
           unlimited: "Open enrollment",
+          full: "Full",
           coaches: (n: number) => `${n} coach${n === 1 ? "" : "es"}`,
         };
 
@@ -97,8 +100,14 @@ export default async function ClinicsListPage() {
         ) : (
           <div className="grid items-start gap-0 sm:gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {clinics.map((c) => {
-              const active = c.registrations.filter((r) => r.status !== "cancelled").length;
-              const spotsOpen = c.capacity != null ? c.capacity - active : null;
+              const active = c.registrations.filter((r) => r.status !== "cancelled");
+              const registeredCount = active.filter((r) => r.status === "registered").length;
+              const waitlistedCount = active.filter((r) => r.status === "waitlisted").length;
+              const spotsOpen = c.capacity != null ? Math.max(0, c.capacity - registeredCount) : null;
+              const isFull = spotsOpen != null && spotsOpen <= 0;
+              const waitlistFull =
+                c.waitlist_capacity != null && waitlistedCount >= c.waitlist_capacity;
+              const completelyFull = isFull && waitlistFull;
               const cover = (c.images ?? [])[0];
               const title = pick<string>(c.title, c.title_es ?? "", locale);
               const location = pick<string>(c.location, c.location_es ?? "", locale);
@@ -150,16 +159,16 @@ export default async function ClinicsListPage() {
                     <p className="mb-3 text-xs text-zinc-400">{location}</p>
                     <p className="text-xs text-zinc-500">
                       {c.coaches.length > 0 && <span className="mr-2">{L.coaches(c.coaches.length)}</span>}
-                      {c.registration_open ? (
-                        spotsOpen == null ? (
-                          <span className="text-emerald-500">{L.unlimited}</span>
-                        ) : spotsOpen > 0 ? (
-                          <span className="text-emerald-500">{L.spotsLeft(spotsOpen)}</span>
-                        ) : (
-                          <span className="text-amber-500">{L.waitlistOnly}</span>
-                        )
+                      {!c.registration_open || completelyFull ? (
+                        <span className="text-zinc-500">
+                          {completelyFull ? L.full : d.registration_closed}
+                        </span>
+                      ) : spotsOpen == null ? (
+                        <span className="text-emerald-500">{L.unlimited}</span>
+                      ) : spotsOpen > 0 ? (
+                        <span className="text-emerald-500">{L.spotsLeft(spotsOpen)}</span>
                       ) : (
-                        <span className="text-zinc-500">{d.registration_closed}</span>
+                        <span className="text-amber-500">{L.waitlistOnly}</span>
                       )}
                     </p>
                   </div>

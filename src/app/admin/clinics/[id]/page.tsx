@@ -94,6 +94,7 @@ export default async function AdminClinicEditPage({
             status: clinic.status,
             registration_open: clinic.registration_open,
             capacity: clinic.capacity,
+            waitlist_capacity: clinic.waitlist_capacity,
             images: clinic.images ?? [],
             payment_qr_url: clinic.payment_qr_url ?? "",
             payment_instructions: clinic.payment_instructions ?? "",

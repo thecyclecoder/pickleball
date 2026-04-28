@@ -24,6 +24,7 @@ export type ClinicFormInput = {
   status: "draft" | "published" | "cancelled" | "completed";
   registration_open: boolean;
   capacity: number | null;
+  waitlist_capacity: number | null;
   images: TournamentImage[];
   payment_qr_url: string;
   payment_instructions: string;
@@ -76,6 +77,7 @@ export function ClinicForm({
       status: "draft",
       registration_open: true,
       capacity: null,
+      waitlist_capacity: null,
       images: [],
       payment_qr_url: "",
       payment_instructions: "",
@@ -151,6 +153,7 @@ export function ClinicForm({
         status: form.status,
         registration_open: form.registration_open,
         capacity: form.capacity,
+        waitlist_capacity: form.waitlist_capacity,
         images: form.images,
         flyer_image_url: form.images[0] ? largestSrc(form.images[0]) : null,
         payment_qr_url: form.payment_qr_url || null,
@@ -377,13 +380,20 @@ export function ClinicForm({
       </Section>
 
       <Section title="Capacity & registration">
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid gap-4 sm:grid-cols-3">
           <LabeledInput
             label="Capacity"
             type="number"
             value={form.capacity == null ? "" : String(form.capacity)}
             onChange={(v) => set("capacity", v === "" ? null : Number(v))}
             placeholder="leave blank for unlimited"
+          />
+          <LabeledInput
+            label="Waitlist capacity"
+            type="number"
+            value={form.waitlist_capacity == null ? "" : String(form.waitlist_capacity)}
+            onChange={(v) => set("waitlist_capacity", v === "" ? null : Number(v))}
+            placeholder="blank = unlimited waitlist"
           />
           <label className="mt-7 flex items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-white">
             <input
@@ -395,6 +405,11 @@ export function ClinicForm({
             Registration open
           </label>
         </div>
+        <p className="text-xs text-zinc-500">
+          Once <strong>capacity</strong> registrations are filled, new signups go to the waitlist.
+          Once the waitlist hits <strong>waitlist capacity</strong>, the public form closes
+          automatically and the page shows &ldquo;Full.&rdquo;
+        </p>
       </Section>
 
       <Section title="Coaches" description="Listed on the public clinic page in the order you set here.">
