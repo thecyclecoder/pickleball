@@ -68,7 +68,7 @@ export async function sendInviteMagicLink(args: InviteEmailArgs): Promise<void> 
   const { toEmail, workspaceName, confirmLink } = args;
   const subject = `You're invited to ${workspaceName}`;
   const html = `<!doctype html>
-<html><head><meta charset="utf-8" /><title>${escapeHtml(subject)}</title></head>
+<html><head><meta charset="utf-8" /><meta name="format-detection" content="telephone=no, address=no, email=no" /><title>${escapeHtml(subject)}</title></head>
 <body style="margin:0;padding:0;background:#09090b;color:#fafafa;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#09090b;padding:24px 16px;">
     <tr><td align="center">
@@ -229,7 +229,7 @@ function registrationEmailHtml(args: RegistrationEmailArgs): { subject: string; 
           </tr>
           <tr>
             <td style="padding:16px 28px 28px;">
-              <p style="margin:0;font-size:12px;color:#71717a;line-height:1.55;">Tournament details: <a href="${tournamentUrl}" style="color:#34d399;text-decoration:none;">${escapeHtml(tournamentUrl)}</a></p>
+              <p style="margin:0;font-size:12px;color:#71717a;line-height:1.55;">Tournament details: <a href="${tournamentUrl}" style="color:#fde047;text-decoration:none;">${escapeHtml(tournamentUrl)}</a></p>
             </td>
           </tr>
         </table>
@@ -314,7 +314,7 @@ function clinicRegistrationEmailHtml(args: ClinicEmailArgs): {
     "Click the button below to confirm your spot and view it on your profile. This link signs you in — no password needed.";
 
   const html = `<!doctype html>
-<html><head><meta charset="utf-8" /><title>${escapeHtml(subject)}</title></head>
+<html><head><meta charset="utf-8" /><meta name="format-detection" content="telephone=no, address=no, email=no" /><title>${escapeHtml(subject)}</title></head>
 <body style="margin:0;padding:0;background:#09090b;color:#fafafa;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#09090b;padding:24px 16px;">
     <tr><td align="center">
@@ -344,7 +344,7 @@ function clinicRegistrationEmailHtml(args: ClinicEmailArgs): {
           <a href="${confirmLink}" style="display:inline-block;background:#10b981;color:#ffffff;text-decoration:none;font-weight:600;font-size:14px;padding:12px 22px;border-radius:10px;">Confirm your spot</a>
         </td></tr>
         <tr><td style="padding:16px 28px 28px;">
-          <p style="margin:0;font-size:12px;color:#71717a;line-height:1.55;">Clinic details: <a href="${clinicUrl}" style="color:#34d399;text-decoration:none;">${escapeHtml(clinicUrl)}</a></p>
+          <p style="margin:0;font-size:12px;color:#71717a;line-height:1.55;">Clinic details: <a href="${clinicUrl}" style="color:#fde047;text-decoration:none;">${escapeHtml(clinicUrl)}</a></p>
         </td></tr>
       </table>
       <p style="margin:16px 0 0;font-size:11px;color:#52525b;">Puerto Rico Pickleball · <a href="${SITE_URL}" style="color:#52525b;text-decoration:none;">buentiro.app</a></p>
@@ -423,7 +423,7 @@ export async function sendLessonRequestRequesterEmail(
     </td></tr>`;
 
   const html = `<!doctype html>
-<html><head><meta charset="utf-8" /><title>${escapeHtml(subject)}</title></head>
+<html><head><meta charset="utf-8" /><meta name="format-detection" content="telephone=no, address=no, email=no" /><title>${escapeHtml(subject)}</title></head>
 <body style="margin:0;padding:0;background:#09090b;color:#fafafa;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#09090b;padding:24px 16px;">
     <tr><td align="center">
@@ -446,7 +446,7 @@ export async function sendLessonRequestRequesterEmail(
               <div style="font-size:14px;color:#fafafa;margin-top:2px;">${escapeHtml(coachName)}</div>
             </td></tr>
             ${detailRow("Name", escapeHtml(`${toFirstName} ${toLastName}`))}
-            ${detailRow("Email", `<a href="mailto:${toEmail}" style="color:#34d399;text-decoration:none;">${escapeHtml(toEmail)}</a>`)}
+            ${detailRow("Email", `<a href="mailto:${toEmail}" style="color:#fde047;text-decoration:none;">${escapeHtml(toEmail)}</a>`)}
             ${toPhone ? detailRow("Phone", escapeHtml(toPhone)) : ""}
             ${detailRow("Skill level", escapeHtml(skillLevel))}
             ${lessonType ? detailRow("Lesson type", escapeHtml(lessonType)) : ""}
@@ -458,7 +458,7 @@ export async function sendLessonRequestRequesterEmail(
           <a href="${confirmLink}" style="display:inline-block;background:#10b981;color:#ffffff;text-decoration:none;font-weight:600;font-size:14px;padding:12px 22px;border-radius:10px;">Sign in & track this</a>
         </td></tr>
         <tr><td style="padding:16px 28px 28px;">
-          <p style="margin:0;font-size:12px;color:#71717a;line-height:1.55;">Coach profile: <a href="${coachUrl}" style="color:#34d399;text-decoration:none;">${escapeHtml(coachUrl)}</a></p>
+          <p style="margin:0;font-size:12px;color:#71717a;line-height:1.55;">Coach profile: <a href="${coachUrl}" style="color:#fde047;text-decoration:none;">${escapeHtml(coachUrl)}</a></p>
         </td></tr>
       </table>
       <p style="margin:16px 0 0;font-size:11px;color:#52525b;">Buen Tiro · <a href="${SITE_URL}" style="color:#52525b;text-decoration:none;">buentiro.app</a></p>
@@ -515,7 +515,7 @@ export async function sendLessonRequestCoachEmail(
   const headline = `New lesson request`;
 
   const html = `<!doctype html>
-<html><head><meta charset="utf-8" /><title>${escapeHtml(subject)}</title></head>
+<html><head><meta charset="utf-8" /><meta name="format-detection" content="telephone=no, address=no, email=no" /><title>${escapeHtml(subject)}</title></head>
 <body style="margin:0;padding:0;background:#09090b;color:#fafafa;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#09090b;padding:24px 16px;">
     <tr><td align="center">
@@ -582,7 +582,7 @@ export async function sendLessonReplyEmail(args: LessonReplyEmailArgs): Promise<
   const headline = `${coachName} replied to your lesson request`;
 
   const html = `<!doctype html>
-<html><head><meta charset="utf-8" /><title>${escapeHtml(subject)}</title></head>
+<html><head><meta charset="utf-8" /><meta name="format-detection" content="telephone=no, address=no, email=no" /><title>${escapeHtml(subject)}</title></head>
 <body style="margin:0;padding:0;background:#09090b;color:#fafafa;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#09090b;padding:24px 16px;">
     <tr><td align="center">
@@ -602,7 +602,7 @@ export async function sendLessonReplyEmail(args: LessonReplyEmailArgs): Promise<
           <p style="margin:0 0 12px;font-size:13px;color:#a1a1aa;line-height:1.55;">Reply to this email and your message will go straight to ${escapeHtml(coachName)}.</p>
         </td></tr>
         <tr><td style="padding:16px 28px 28px;">
-          <p style="margin:0;font-size:12px;color:#71717a;line-height:1.55;">Coach profile: <a href="${coachUrl}" style="color:#34d399;text-decoration:none;">${escapeHtml(coachUrl)}</a></p>
+          <p style="margin:0;font-size:12px;color:#71717a;line-height:1.55;">Coach profile: <a href="${coachUrl}" style="color:#fde047;text-decoration:none;">${escapeHtml(coachUrl)}</a></p>
         </td></tr>
       </table>
       <p style="margin:16px 0 0;font-size:11px;color:#52525b;">Buen Tiro · <a href="${SITE_URL}" style="color:#52525b;text-decoration:none;">buentiro.app</a></p>
@@ -667,7 +667,7 @@ export async function sendLessonForwardEmail(args: LessonForwardEmailArgs): Prom
       : `Hi ${escapeHtml(toFirstName)}, ${escapeHtml(fromName)} sent you the following:`;
 
   const html = `<!doctype html>
-<html><head><meta charset="utf-8" /><title>${escapeHtml(subject)}</title></head>
+<html><head><meta charset="utf-8" /><meta name="format-detection" content="telephone=no, address=no, email=no" /><title>${escapeHtml(subject)}</title></head>
 <body style="margin:0;padding:0;background:#09090b;color:#fafafa;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#09090b;padding:24px 16px;">
     <tr><td align="center">
@@ -771,7 +771,7 @@ export async function sendLessonScheduledEmail(
     </td></tr>`;
 
   const html = `<!doctype html>
-<html><head><meta charset="utf-8" /><title>${escapeHtml(subject)}</title></head>
+<html><head><meta charset="utf-8" /><meta name="format-detection" content="telephone=no, address=no, email=no" /><title>${escapeHtml(subject)}</title></head>
 <body style="margin:0;padding:0;background:#09090b;color:#fafafa;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#09090b;padding:24px 16px;">
     <tr><td align="center">
@@ -789,7 +789,7 @@ export async function sendLessonScheduledEmail(
             ${detailRow("When", `${whenLabel} · ${durationLabel}`)}
             ${detailRow("Coach", coachName)}
             ${location ? detailRow("Where", location) : ""}
-            ${googleMapsUrl ? `<tr><td style="padding:0 16px 14px;"><a href="${googleMapsUrl}" style="color:#34d399;text-decoration:none;font-size:13px;">Get directions →</a></td></tr>` : ""}
+            ${googleMapsUrl ? `<tr><td style="padding:0 16px 14px;"><a href="${googleMapsUrl}" style="color:#fde047;text-decoration:none;font-size:13px;">Get directions →</a></td></tr>` : ""}
             ${notes ? detailRow("Notes from your coach", notes) : ""}
           </table>
         </td></tr>
@@ -862,7 +862,7 @@ export async function sendForwardedAliasEmail(
   const headline = `New message to ${alias}@buentiro.app`;
 
   const html = `<!doctype html>
-<html><head><meta charset="utf-8" /><title>${escapeHtml(displaySubject)}</title></head>
+<html><head><meta charset="utf-8" /><meta name="format-detection" content="telephone=no, address=no, email=no" /><title>${escapeHtml(displaySubject)}</title></head>
 <body style="margin:0;padding:0;background:#09090b;color:#fafafa;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#09090b;padding:24px 16px;">
     <tr><td align="center">
