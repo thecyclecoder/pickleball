@@ -11,10 +11,13 @@ import type {
   Tournament,
   TournamentCategory,
   TournamentCourt,
+  TournamentPool,
   Team,
   Player,
   TournamentFormat,
+  Game,
 } from "@/lib/types";
+import { PoolsPanel } from "./pools-panel";
 
 export const dynamic = "force-dynamic";
 
@@ -34,6 +37,8 @@ export default async function AdminTournamentEditPage({
       `*,
        categories:tournament_categories (*),
        courts:tournament_courts (*),
+       pools:tournament_pools (*),
+       games (*),
        teams (*, players (*))`
     )
     .eq("id", id)
@@ -45,8 +50,21 @@ export default async function AdminTournamentEditPage({
   const tournament = data as Tournament & {
     categories: TournamentCategory[];
     courts: TournamentCourt[];
+    pools: TournamentPool[];
+    games: Game[];
     teams: (Team & { players: Player[] })[];
   };
+
+  // Group pools/games/teams per category for the PoolsPanel
+  const poolCategoriesView = tournament.categories
+    .slice()
+    .sort((a, b) => a.sort_order - b.sort_order || a.type.localeCompare(b.type))
+    .map((c) => ({
+      ...c,
+      pools: tournament.pools.filter((p) => p.category_id === c.id),
+      teams: tournament.teams.filter((t) => t.category_id === c.id),
+      games: tournament.games.filter((g) => g.category_id === c.id),
+    }));
 
   const { data: formatRows } = await admin
     .from("tournament_formats")
@@ -93,6 +111,16 @@ export default async function AdminTournamentEditPage({
           .map((c) => ({ ...c, display: categoryLabel(c) }))}
         teams={tournament.teams}
       />
+
+      {tournament.categories.length > 0 && (
+        <div className="mt-8">
+          <PoolsPanel
+            tournamentId={tournament.id}
+            categories={poolCategoriesView}
+            courts={sortedCourts}
+          />
+        </div>
+      )}
 
       <div className="mt-8">
         <h2 className="mb-4 text-lg font-semibold text-white">Edit</h2>

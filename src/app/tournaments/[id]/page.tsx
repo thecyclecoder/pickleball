@@ -15,7 +15,7 @@ import {
 import { PublicHeader } from "@/components/public-header";
 import { PublicFooter } from "@/components/public-footer";
 import { ImageCarousel } from "./image-carousel";
-import type { Tournament, TournamentCategory, Team, Player, Workspace, TournamentImage } from "@/lib/types";
+import type { Tournament, TournamentCategory, Team, Player, Workspace, TournamentImage, TournamentCourt, TournamentPool, Game } from "@/lib/types";
 import { largestSrc, type TournamentFormat } from "@/lib/types";
 import { FormatTimeline } from "@/components/format-timeline";
 import { RegisterForm } from "./register-form";
@@ -125,6 +125,9 @@ export default async function TournamentDetailPage({
       `*,
        workspace:workspaces (id, name, payment_info),
        categories:tournament_categories (*, format:tournament_formats (*)),
+       courts:tournament_courts (*),
+       pools:tournament_pools (*),
+       games (*),
        teams (
          *,
          players (*)
@@ -137,10 +140,14 @@ export default async function TournamentDetailPage({
     | (Tournament & {
         workspace: Pick<Workspace, "id" | "name" | "payment_info">;
         categories: LoadedCategory[];
+        courts: TournamentCourt[];
+        pools: TournamentPool[];
+        games: Game[];
         teams: LoadedTeam[];
       })
     | undefined;
   if (!tour || tour.status !== "published") notFound();
+  const courtById = new Map(tour.courts.map((c) => [c.id, c]));
 
   const sortedCategories = [...tour.categories].sort(
     (a, b) => a.sort_order - b.sort_order || a.type.localeCompare(b.type)
@@ -162,6 +169,10 @@ export default async function TournamentDetailPage({
     const waitlistFull =
       c.waitlist_limit != null && waitlistedTeams.length >= c.waitlist_limit;
     const completelyFull = rosterFull && waitlistFull;
+    const poolsForCategory = tour.pools
+      .filter((p) => p.category_id === c.id)
+      .sort((a, b) => a.sort_order - b.sort_order);
+    const gamesForCategory = tour.games.filter((g) => g.category_id === c.id);
     return {
       ...c,
       teams,
@@ -172,8 +183,11 @@ export default async function TournamentDetailPage({
       waitlist_full: waitlistFull,
       completely_full: completelyFull,
       display: categoryLabelI18n(c, locale),
+      pools: poolsForCategory,
+      games: gamesForCategory,
     };
   });
+  const anyPools = categoriesView.some((c) => c.pools.length > 0);
 
   const openCategories = categoriesView.filter((c) => !c.completely_full);
   const allCategoriesFull = categoriesView.length > 0 && openCategories.length === 0;
@@ -358,6 +372,29 @@ export default async function TournamentDetailPage({
           </ul>
         </section>
 
+        {anyPools && (
+          <section className="mb-8">
+            <h2 className="mb-3 text-lg font-semibold text-white sm:text-xl">
+              {locale === "es" ? "Grupos y partidos" : "Pools & schedule"}
+            </h2>
+            <div className="space-y-6">
+              {categoriesView
+                .filter((c) => c.pools.length > 0)
+                .map((c) => (
+                  <CategoryPoolsPublic
+                    key={c.id}
+                    categoryDisplay={c.display}
+                    pools={c.pools}
+                    teams={c.teams}
+                    games={c.games}
+                    courtById={courtById}
+                    locale={locale}
+                  />
+                ))}
+            </div>
+          </section>
+        )}
+
         {tour.registration_open && allCategoriesFull && (
           <section className="mb-8 rounded-xl border border-amber-800 bg-amber-950/20 p-5 text-center sm:p-6">
             <p className="text-sm font-semibold uppercase tracking-wider text-amber-400">
@@ -447,6 +484,132 @@ export default async function TournamentDetailPage({
         </div>
       </main>
       <PublicFooter />
+    </div>
+  );
+}
+
+function CategoryPoolsPublic({
+  categoryDisplay,
+  pools,
+  teams,
+  games,
+  courtById,
+  locale,
+}: {
+  categoryDisplay: string;
+  pools: TournamentPool[];
+  teams: LoadedTeam[];
+  games: Game[];
+  courtById: Map<string, TournamentCourt>;
+  locale: "en" | "es";
+}) {
+  const teamById = new Map(teams.map((t) => [t.id, t]));
+
+  function teamLabel(t: LoadedTeam | undefined): string {
+    if (!t) return "—";
+    const sorted = [...t.players].sort(
+      (a, b) => Number(b.is_captain) - Number(a.is_captain)
+    );
+    return (
+      sorted
+        .map((p) => `${p.first_name} ${p.last_name.slice(0, 1)}.`)
+        .join(" / ") || "Team"
+    );
+  }
+
+  function courtBadge(c: TournamentCourt | undefined): string | null {
+    if (!c) return null;
+    return c.name ? `${locale === "es" ? "Cancha" : "Court"} ${c.number} — ${c.name}` : `${locale === "es" ? "Cancha" : "Court"} ${c.number}`;
+  }
+
+  const labels =
+    locale === "es"
+      ? {
+          pool: "Grupo",
+          teamCol: "Equipo",
+          seedCol: "Seed",
+          round: "R",
+          vs: "vs",
+          roundRobin: (n: number) => `Round-robin (${n} partidos)`,
+        }
+      : {
+          pool: "Pool",
+          teamCol: "Team",
+          seedCol: "Seed",
+          round: "R",
+          vs: "vs",
+          roundRobin: (n: number) => `Round-robin (${n} games)`,
+        };
+
+  return (
+    <div>
+      <h3 className="mb-3 text-base font-medium text-zinc-200">{categoryDisplay}</h3>
+      <div className="grid gap-4 sm:grid-cols-2">
+        {pools.map((pool) => {
+          const poolTeams = teams
+            .filter((t) => t.pool_id === pool.id)
+            .sort((a, b) => (a.pool_seed ?? 0) - (b.pool_seed ?? 0));
+          const poolGames = games
+            .filter((g) => g.pool_id === pool.id)
+            .sort((a, b) => a.round - b.round || a.sort_order - b.sort_order);
+          const courtIds = Array.from(
+            new Set(poolGames.map((g) => g.court_id).filter((v): v is string => !!v))
+          );
+          const courtLabel = courtIds.length === 1 ? courtBadge(courtById.get(courtIds[0])) : null;
+          return (
+            <div
+              key={pool.id}
+              className="overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900"
+            >
+              <div className="flex items-center justify-between border-b border-zinc-800 bg-zinc-900/60 px-4 py-2">
+                <p className="text-sm font-semibold text-white">
+                  {labels.pool} {pool.letter}
+                </p>
+                {courtLabel && <p className="text-xs text-emerald-400">{courtLabel}</p>}
+              </div>
+              <ul className="divide-y divide-zinc-800 text-xs">
+                {poolTeams.map((t) => (
+                  <li
+                    key={t.id}
+                    className="flex items-center justify-between gap-2 px-4 py-2"
+                  >
+                    <span className="text-zinc-200">
+                      <span className="mr-2 text-zinc-500">#{t.pool_seed}</span>
+                      {teamLabel(t)}
+                    </span>
+                    <span className="text-zinc-500">
+                      {labels.seedCol} {t.seed}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              <div className="border-t border-zinc-800 bg-zinc-950/40 px-4 py-3">
+                <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
+                  {labels.roundRobin(poolGames.length)}
+                </p>
+                <ul className="space-y-1.5 text-xs">
+                  {poolGames.map((g) => {
+                    const a = teamById.get(g.team_a_id ?? "");
+                    const b = teamById.get(g.team_b_id ?? "");
+                    return (
+                      <li key={g.id} className="flex items-center justify-between gap-2">
+                        <span className="text-zinc-500">
+                          {labels.round}
+                          {g.round}
+                        </span>
+                        <span className="min-w-0 flex-1 truncate text-zinc-200">
+                          {teamLabel(a)} <span className="text-zinc-500">{labels.vs}</span>{" "}
+                          {teamLabel(b)}
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

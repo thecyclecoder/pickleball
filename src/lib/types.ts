@@ -181,6 +181,49 @@ export type Team = {
   status: TeamStatus;
   payment_status: PaymentStatus;
   registered_at: string;
+  pool_id: string | null;
+  /** 1..N seed across the entire category, set by pool generation. */
+  seed: number | null;
+  /** 1..M seed within the team's pool. */
+  pool_seed: number | null;
+};
+
+export type TournamentPool = {
+  id: string;
+  category_id: string;
+  letter: string;
+  sort_order: number;
+  created_at: string;
+};
+
+export const GAME_STAGES = ["pool", "qf", "sf", "f"] as const;
+export type GameStage = (typeof GAME_STAGES)[number];
+
+export const GAME_STATUSES = [
+  "scheduled",
+  "in_progress",
+  "completed",
+  "cancelled",
+] as const;
+export type GameStatus = (typeof GAME_STATUSES)[number];
+
+export type Game = {
+  id: string;
+  category_id: string;
+  pool_id: string | null;
+  stage: GameStage;
+  round: number;
+  court_id: string | null;
+  team_a_id: string | null;
+  team_b_id: string | null;
+  score_a: number | null;
+  score_b: number | null;
+  winner_team_id: string | null;
+  status: GameStatus;
+  starts_at: string | null;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
 };
 
 export type Player = {
