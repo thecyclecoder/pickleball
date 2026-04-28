@@ -1,11 +1,11 @@
 import Link from "next/link";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getCurrentMembership } from "@/lib/auth";
+import { getCurrentMembership, isSuperAdmin } from "@/lib/auth";
 import { PlayersPanel } from "./players-panel";
 
 export const dynamic = "force-dynamic";
 
-type Raw = {
+type PlayerRaw = {
   id: string;
   first_name: string;
   last_name: string;
@@ -14,6 +14,7 @@ type Raw = {
   user_id: string | null;
   confirmed_at: string | null;
   created_at: string;
+  workspace_id: string | null;
   team: {
     id: string;
     status: string;
@@ -22,76 +23,173 @@ type Raw = {
   } | null;
 };
 
+type ClinicRegRaw = {
+  id: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+  rating_self: string;
+  user_id: string | null;
+  confirmed_at: string | null;
+  registered_at: string;
+  workspace_id: string | null;
+  status: string;
+  clinic: { id: string; slug: string; title: string } | null;
+};
+
 export type PlayerAggregate = {
   email: string;
   first_name: string;
   last_name: string;
-  rating: number;
+  /** Display string — numeric for tournament players, "Beginner" / number for clinics. */
+  rating: string;
   has_account: boolean;
   registration_count: number;
   last_registered_at: string;
-  tournaments: { id: string; slug: string; title: string; registered_at: string; status: string }[];
+  workspaces: { id: string; name: string }[];
+  events: {
+    kind: "tournament" | "clinic";
+    id: string;
+    slug: string;
+    title: string;
+    workspace_id: string | null;
+    workspace_name: string;
+    registered_at: string;
+    status: string;
+  }[];
 };
 
-export default async function AdminPlayersPage() {
+export default async function AdminPlayersPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ all?: string }>;
+}) {
   const res = await getCurrentMembership();
   if (res.status !== "ok") return null;
+  const sp = await searchParams;
+  const superAdmin = isSuperAdmin(res.user);
+  const showAll = superAdmin && sp.all === "1";
 
   const admin = createAdminClient();
-  const { data: players } = await admin
+
+  const playersQuery = admin
     .from("players")
     .select(
-      `id, first_name, last_name, email, rating, user_id, confirmed_at, created_at,
+      `id, first_name, last_name, email, rating, user_id, confirmed_at, created_at, workspace_id,
        team:teams (
          id, status, registered_at,
          tournament:tournaments (id, slug, title)
        )`
     )
-    .eq("workspace_id", res.member.workspace_id)
     .order("created_at", { ascending: false });
+  const clinicQuery = admin
+    .from("clinic_registrations")
+    .select(
+      `id, first_name, last_name, email, rating_self, user_id, confirmed_at, registered_at, workspace_id, status,
+       clinic:clinics (id, slug, title)`
+    )
+    .order("registered_at", { ascending: false });
 
-  const rows = (players ?? []) as unknown as Raw[];
+  const [playersRes, clinicRes, workspacesRes] = await Promise.all([
+    showAll ? playersQuery : playersQuery.eq("workspace_id", res.member.workspace_id),
+    showAll ? clinicQuery : clinicQuery.eq("workspace_id", res.member.workspace_id),
+    admin.from("workspaces").select("id, name"),
+  ]);
+  const wsById = new Map((workspacesRes.data ?? []).map((w) => [w.id, w.name]));
 
-  // Aggregate by lowercased email so a person who registered for N
-  // tournaments shows up as one row with N in the "Registrations" column.
+  const players = (playersRes.data ?? []) as unknown as PlayerRaw[];
+  const clinicRegs = (clinicRes.data ?? []) as unknown as ClinicRegRaw[];
+
   const byEmail = new Map<string, PlayerAggregate>();
-  for (const r of rows) {
-    const key = r.email.toLowerCase();
-    const entry = byEmail.get(key);
-    const registeredAt = r.team?.registered_at ?? r.created_at;
-    const tour = r.team?.tournament ?? null;
-    const tourEntry = tour
-      ? {
-          id: tour.id,
-          slug: tour.slug,
-          title: tour.title,
-          registered_at: registeredAt,
-          status: r.team?.status ?? "registered",
-        }
-      : null;
-    if (!entry) {
-      byEmail.set(key, {
-        email: key,
-        first_name: r.first_name,
-        last_name: r.last_name,
-        rating: Number(r.rating),
-        has_account: !!r.confirmed_at,
-        registration_count: 1,
-        last_registered_at: registeredAt,
-        tournaments: tourEntry ? [tourEntry] : [],
+
+  function ensure(key: string, seed: Pick<PlayerAggregate, "first_name" | "last_name" | "email" | "rating">): PlayerAggregate {
+    const existing = byEmail.get(key);
+    if (existing) return existing;
+    const fresh: PlayerAggregate = {
+      email: key,
+      first_name: seed.first_name,
+      last_name: seed.last_name,
+      rating: seed.rating,
+      has_account: false,
+      registration_count: 0,
+      last_registered_at: "",
+      workspaces: [],
+      events: [],
+    };
+    byEmail.set(key, fresh);
+    return fresh;
+  }
+
+  function noteWorkspace(agg: PlayerAggregate, workspaceId: string | null) {
+    if (!workspaceId) return;
+    if (agg.workspaces.some((w) => w.id === workspaceId)) return;
+    agg.workspaces.push({ id: workspaceId, name: wsById.get(workspaceId) ?? "Workspace" });
+  }
+
+  for (const p of players) {
+    const key = p.email.toLowerCase();
+    const agg = ensure(key, {
+      first_name: p.first_name,
+      last_name: p.last_name,
+      email: key,
+      rating: Number(p.rating).toFixed(1),
+    });
+    agg.registration_count += 1;
+    if (p.confirmed_at) agg.has_account = true;
+    const at = p.team?.registered_at ?? p.created_at;
+    if (at > agg.last_registered_at) {
+      agg.last_registered_at = at;
+      agg.first_name = p.first_name;
+      agg.last_name = p.last_name;
+      agg.rating = Number(p.rating).toFixed(1);
+    }
+    noteWorkspace(agg, p.workspace_id);
+    if (p.team?.tournament) {
+      agg.events.push({
+        kind: "tournament",
+        id: p.team.tournament.id,
+        slug: p.team.tournament.slug,
+        title: p.team.tournament.title,
+        workspace_id: p.workspace_id,
+        workspace_name: p.workspace_id ? wsById.get(p.workspace_id) ?? "Workspace" : "—",
+        registered_at: at,
+        status: p.team.status,
       });
-    } else {
-      entry.registration_count += 1;
-      if (tourEntry) entry.tournaments.push(tourEntry);
-      if (r.confirmed_at) entry.has_account = true;
-      if (registeredAt > entry.last_registered_at) {
-        entry.last_registered_at = registeredAt;
-        entry.first_name = r.first_name;
-        entry.last_name = r.last_name;
-        entry.rating = Number(r.rating);
-      }
     }
   }
+
+  for (const r of clinicRegs) {
+    const key = r.email.toLowerCase();
+    const ratingDisplay = r.rating_self === "beginner" ? "Beginner" : r.rating_self;
+    const agg = ensure(key, {
+      first_name: r.first_name,
+      last_name: r.last_name,
+      email: key,
+      rating: ratingDisplay,
+    });
+    agg.registration_count += 1;
+    if (r.confirmed_at) agg.has_account = true;
+    if (r.registered_at > agg.last_registered_at) {
+      agg.last_registered_at = r.registered_at;
+      agg.first_name = r.first_name;
+      agg.last_name = r.last_name;
+      agg.rating = ratingDisplay;
+    }
+    noteWorkspace(agg, r.workspace_id);
+    if (r.clinic) {
+      agg.events.push({
+        kind: "clinic",
+        id: r.clinic.id,
+        slug: r.clinic.slug,
+        title: r.clinic.title,
+        workspace_id: r.workspace_id,
+        workspace_name: r.workspace_id ? wsById.get(r.workspace_id) ?? "Workspace" : "—",
+        registered_at: r.registered_at,
+        status: r.status,
+      });
+    }
+  }
+
   const aggregates = Array.from(byEmail.values()).sort((a, b) =>
     b.last_registered_at.localeCompare(a.last_registered_at)
   );
@@ -105,12 +203,33 @@ export default async function AdminPlayersPage() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-white">Players</h1>
           <p className="text-sm text-zinc-400">
-            Everyone who has registered for a tournament in this workspace. Players become{" "}
-            <strong className="text-emerald-400">confirmed</strong> users when they click the magic
-            link in their confirmation email (or sign in with Google using that email).
+            {showAll
+              ? "Every unique person who has registered for an event across every workspace."
+              : "Everyone who has registered for a tournament or clinic in this workspace."}{" "}
+            <strong className="text-emerald-400">Confirmed</strong> = signed in via magic link.
           </p>
         </div>
-        <div className="flex gap-2 text-xs">
+        <div className="flex flex-wrap gap-2 text-xs">
+          {superAdmin && (
+            <div className="flex items-center gap-0.5 rounded-md border border-zinc-800 bg-zinc-900 p-0.5">
+              <Link
+                href="/admin/players"
+                className={`rounded px-2.5 py-1 font-medium transition-colors ${
+                  !showAll ? "bg-emerald-600 text-white" : "text-zinc-400 hover:text-white"
+                }`}
+              >
+                This workspace
+              </Link>
+              <Link
+                href="/admin/players?all=1"
+                className={`rounded px-2.5 py-1 font-medium transition-colors ${
+                  showAll ? "bg-emerald-600 text-white" : "text-zinc-400 hover:text-white"
+                }`}
+              >
+                All workspaces
+              </Link>
+            </div>
+          )}
           <span className="rounded-md border border-emerald-800 bg-emerald-950/40 px-2 py-1 text-emerald-300">
             {withAccount} confirmed
           </span>
@@ -122,16 +241,10 @@ export default async function AdminPlayersPage() {
 
       {aggregates.length === 0 ? (
         <div className="rounded-xl border border-dashed border-zinc-800 bg-zinc-900/40 p-10 text-center">
-          <p className="mb-3 text-sm text-zinc-400">No players have registered yet.</p>
-          <Link
-            href="/admin/tournaments"
-            className="text-sm text-emerald-400 hover:text-emerald-300"
-          >
-            Go to tournaments →
-          </Link>
+          <p className="mb-3 text-sm text-zinc-400">No players yet.</p>
         </div>
       ) : (
-        <PlayersPanel players={aggregates} />
+        <PlayersPanel players={aggregates} showWorkspaceColumn={showAll} />
       )}
     </div>
   );
