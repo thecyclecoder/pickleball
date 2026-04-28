@@ -17,13 +17,14 @@ const geistMono = Geist_Mono({
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://buentiro.app";
 const SITE_NAME = "Buen Tiro";
+const DEFAULT_TITLE = `${SITE_NAME} — Puerto Rico Pickleball`;
 const DEFAULT_DESCRIPTION =
-  "Find and register for pickleball tournaments in Puerto Rico — Puerto Rico's home for pickleball events.";
+  "Puerto Rico's home for pickleball. Find tournaments, drop into clinics, book private lessons with top local coaches, and track everything from one profile.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: `${SITE_NAME} — Pickleball Tournaments in Puerto Rico`,
+    default: DEFAULT_TITLE,
     template: `%s · ${SITE_NAME}`,
   },
   description: DEFAULT_DESCRIPTION,
@@ -33,8 +34,13 @@ export const metadata: Metadata = {
     "Puerto Rico",
     "tournaments",
     "torneos",
+    "clinics",
+    "clínicas",
+    "lessons",
+    "lecciones",
+    "coaches",
+    "entrenadores",
     "pickleball Puerto Rico",
-    "pickleball tournament",
     "Buen Tiro",
   ],
   manifest: "/manifest.json",
@@ -46,25 +52,19 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     siteName: SITE_NAME,
-    title: `${SITE_NAME} — Pickleball Tournaments in Puerto Rico`,
+    title: DEFAULT_TITLE,
     description: DEFAULT_DESCRIPTION,
     url: SITE_URL,
     locale: "en_US",
     alternateLocale: ["es_PR"],
-    images: [
-      {
-        url: "/icon-512.png",
-        width: 512,
-        height: 512,
-        alt: SITE_NAME,
-      },
-    ],
+    // Image is supplied by the auto-routed app/opengraph-image.tsx file —
+    // letting Next.js wire it up means the right size / dimensions get
+    // emitted automatically.
   },
   twitter: {
     card: "summary_large_image",
-    title: `${SITE_NAME} — Pickleball Tournaments`,
+    title: DEFAULT_TITLE,
     description: DEFAULT_DESCRIPTION,
-    images: ["/icon-512.png"],
   },
   robots: {
     index: true,

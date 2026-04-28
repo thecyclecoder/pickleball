@@ -55,7 +55,8 @@ const UI = {
     nav_admin: "Admin",
     hero_kicker: "Puerto Rico Pickleball",
     hero_title: "Find your next tournament.",
-    hero_desc: "Browse upcoming pickleball tournaments, register your team, and get out on the court.",
+    hero_desc:
+      "Tournaments, clinics, and private lessons across Puerto Rico — sign up in a tap, get reminders, and track every match on your profile.",
     hero_cta: "View tournaments",
     upcoming: "Upcoming",
     see_all: "See all →",
@@ -106,7 +107,8 @@ const UI = {
     nav_admin: "Admin",
     hero_kicker: "Pickleball de Puerto Rico",
     hero_title: "Encuentra tu próximo torneo.",
-    hero_desc: "Explora próximos torneos de pickleball, inscribe tu equipo y sal a la cancha.",
+    hero_desc:
+      "Torneos, clínicas y lecciones privadas en todo Puerto Rico — inscríbete en un toque, recibe recordatorios y guarda cada partido en tu perfil.",
     hero_cta: "Ver torneos",
     upcoming: "Próximos",
     see_all: "Ver todos →",
