@@ -264,6 +264,40 @@ export default async function AdminPlayersPage({
     b.last_registered_at.localeCompare(a.last_registered_at)
   );
 
+  // Deduplicated event list for the panel's filter dropdown. Each event
+  // is keyed by `<kind>:<id>` (e.g. "tournament:abc-123") and tagged
+  // with its most recent registration date so we can sort newest-first.
+  const eventOptionsMap = new Map<
+    string,
+    {
+      key: string;
+      kind: "tournament" | "clinic" | "lesson";
+      id: string;
+      title: string;
+      workspace_name: string;
+      latest_at: string;
+    }
+  >();
+  for (const agg of aggregates) {
+    for (const ev of agg.events) {
+      const key = `${ev.kind}:${ev.id}`;
+      const existing = eventOptionsMap.get(key);
+      if (!existing || ev.registered_at > existing.latest_at) {
+        eventOptionsMap.set(key, {
+          key,
+          kind: ev.kind,
+          id: ev.id,
+          title: ev.title,
+          workspace_name: ev.workspace_name,
+          latest_at: ev.registered_at,
+        });
+      }
+    }
+  }
+  const eventOptions = Array.from(eventOptionsMap.values()).sort((a, b) =>
+    b.latest_at.localeCompare(a.latest_at)
+  );
+
   const withAccount = aggregates.filter((p) => p.has_account).length;
   const pending = aggregates.length - withAccount;
 
@@ -318,6 +352,7 @@ export default async function AdminPlayersPage({
           players={aggregates}
           showWorkspaceColumn={showAll}
           isSuperAdmin={superAdmin}
+          eventOptions={eventOptions}
         />
       )}
     </div>

@@ -7,18 +7,30 @@ import type { PlayerAggregate } from "./page";
 
 type Filter = "all" | "confirmed" | "pending";
 
+export type EventOption = {
+  key: string;
+  kind: "tournament" | "clinic" | "lesson";
+  id: string;
+  title: string;
+  workspace_name: string;
+  latest_at: string;
+};
+
 export function PlayersPanel({
   players,
   showWorkspaceColumn,
   isSuperAdmin = false,
+  eventOptions = [],
 }: {
   players: PlayerAggregate[];
   showWorkspaceColumn: boolean;
   isSuperAdmin?: boolean;
+  eventOptions?: EventOption[];
 }) {
   const router = useRouter();
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
+  const [eventFilter, setEventFilter] = useState<string>("");
   const [expanded, setExpanded] = useState<string | null>(null);
   const [editingEmail, setEditingEmail] = useState<string | null>(null);
   const [deletingEmail, setDeletingEmail] = useState<string | null>(null);
@@ -29,6 +41,9 @@ export function PlayersPanel({
     return players.filter((p) => {
       if (filter === "confirmed" && !p.has_account) return false;
       if (filter === "pending" && p.has_account) return false;
+      if (eventFilter && !p.events.some((e) => `${e.kind}:${e.id}` === eventFilter)) {
+        return false;
+      }
       if (!q) return true;
       // Non-super-admins shouldn't be able to probe by email — restrict
       // search to name fields when contact info is hidden.
@@ -45,7 +60,16 @@ export function PlayersPanel({
         p.last_name.toLowerCase().includes(q)
       );
     });
-  }, [players, search, filter, isSuperAdmin]);
+  }, [players, search, filter, eventFilter, isSuperAdmin]);
+
+  // Group event options for the dropdown's optgroups.
+  const groupedEvents = useMemo(() => {
+    return {
+      tournament: eventOptions.filter((e) => e.kind === "tournament"),
+      clinic: eventOptions.filter((e) => e.kind === "clinic"),
+      lesson: eventOptions.filter((e) => e.kind === "lesson"),
+    };
+  }, [eventOptions]);
 
   function deletePlayer(p: PlayerAggregate, ev: React.MouseEvent) {
     ev.stopPropagation();
@@ -135,6 +159,45 @@ export function PlayersPanel({
             </button>
           ))}
         </div>
+        {eventOptions.length > 0 && (
+          <select
+            value={eventFilter}
+            onChange={(e) => setEventFilter(e.target.value)}
+            className="rounded-md border border-zinc-800 bg-zinc-900 px-2.5 py-2 text-xs text-zinc-200 focus:border-emerald-600 focus:outline-none"
+          >
+            <option value="">All events</option>
+            {groupedEvents.tournament.length > 0 && (
+              <optgroup label="Tournaments">
+                {groupedEvents.tournament.map((e) => (
+                  <option key={e.key} value={e.key}>
+                    {e.title}
+                    {showWorkspaceColumn ? ` — ${e.workspace_name}` : ""}
+                  </option>
+                ))}
+              </optgroup>
+            )}
+            {groupedEvents.clinic.length > 0 && (
+              <optgroup label="Clinics">
+                {groupedEvents.clinic.map((e) => (
+                  <option key={e.key} value={e.key}>
+                    {e.title}
+                    {showWorkspaceColumn ? ` — ${e.workspace_name}` : ""}
+                  </option>
+                ))}
+              </optgroup>
+            )}
+            {groupedEvents.lesson.length > 0 && (
+              <optgroup label="Lessons">
+                {groupedEvents.lesson.map((e) => (
+                  <option key={e.key} value={e.key}>
+                    {e.title.replace(/^Lesson request — /, "")}
+                    {showWorkspaceColumn ? ` — ${e.workspace_name}` : ""}
+                  </option>
+                ))}
+              </optgroup>
+            )}
+          </select>
+        )}
         <button
           type="button"
           onClick={exportCsv}
