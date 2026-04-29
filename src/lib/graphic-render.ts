@@ -10,9 +10,36 @@
  */
 
 import sharp from "sharp";
+import { Resvg } from "@resvg/resvg-js";
+import fs from "node:fs";
+import path from "node:path";
 
 const W = 1080;
 const H = 1350;
+
+/**
+ * Inter font file paths. resvg-js takes filesystem paths and loads
+ * them itself; this skips libvips's font-rendering path which on
+ * Vercel's Lambda has no fallback for sans-serif and produces tofu
+ * boxes. Files come from @fontsource/inter installed in node_modules.
+ */
+const FONT_DIR = path.join(
+  process.cwd(),
+  "node_modules",
+  "@fontsource",
+  "inter",
+  "files"
+);
+const FONT_FILES = [
+  path.join(FONT_DIR, "inter-latin-400-normal.woff2"),
+  path.join(FONT_DIR, "inter-latin-700-normal.woff2"),
+].filter((p) => {
+  try {
+    return fs.statSync(p).isFile();
+  } catch {
+    return false;
+  }
+});
 
 const ESC_MAP: Record<string, string> = {
   "&": "&amp;",
@@ -60,10 +87,10 @@ export function renderPoolResultSvg(args: {
   const yTop = 320;
   const yBottom = 820;
 
-  const headline = `<text x="${W / 2}" y="420" text-anchor="middle" font-family="sans-serif" font-size="80" font-weight="800" fill="#ffffff" letter-spacing="2">POOL ${esc(
+  const headline = `<text x="${W / 2}" y="420" text-anchor="middle" font-family="Inter, sans-serif" font-size="80" font-weight="800" fill="#ffffff" letter-spacing="2">POOL ${esc(
     poolLetter
   )}</text>`;
-  const subhead = `<text x="${W / 2}" y="465" text-anchor="middle" font-family="sans-serif" font-size="22" font-weight="600" fill="#fbbf24" letter-spacing="3">RESULTADOS · RESULTS</text>`;
+  const subhead = `<text x="${W / 2}" y="465" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="600" fill="#fbbf24" letter-spacing="3">RESULTADOS · RESULTS</text>`;
 
   // Up to 4 rows. Y starts at 510, stride 70.
   const rows = teams.slice(0, 4).map((t, i) => {
@@ -71,15 +98,15 @@ export function renderPoolResultSvg(args: {
     const placeColor = i === 0 ? "#10b981" : i === 1 ? "#10b981" : "#a1a1aa";
     const advanceBadge = t.advancing
       ? `<rect x="900" y="${y - 28}" width="100" height="36" rx="8" fill="#10b981" />
-         <text x="950" y="${y - 4}" text-anchor="middle" font-family="sans-serif" font-size="16" font-weight="700" fill="#ffffff">ADVANCE</text>`
+         <text x="950" y="${y - 4}" text-anchor="middle" font-family="Inter, sans-serif" font-size="16" font-weight="700" fill="#ffffff">ADVANCE</text>`
       : "";
     return `
-      <text x="100" y="${y}" font-family="sans-serif" font-size="28" font-weight="800" fill="${placeColor}">${t.place}.</text>
-      <text x="155" y="${y}" font-family="sans-serif" font-size="26" font-weight="700" fill="#ffffff">${esc(
+      <text x="100" y="${y}" font-family="Inter, sans-serif" font-size="28" font-weight="800" fill="${placeColor}">${t.place}.</text>
+      <text x="155" y="${y}" font-family="Inter, sans-serif" font-size="26" font-weight="700" fill="#ffffff">${esc(
         t.label
       )}</text>
-      <text x="780" y="${y}" text-anchor="end" font-family="sans-serif" font-size="26" font-weight="700" fill="#ffffff" font-variant-numeric="tabular-nums">${t.wins}-${t.losses}</text>
-      <text x="870" y="${y}" text-anchor="end" font-family="sans-serif" font-size="20" font-weight="600" fill="${
+      <text x="780" y="${y}" text-anchor="end" font-family="Inter, sans-serif" font-size="26" font-weight="700" fill="#ffffff" font-variant-numeric="tabular-nums">${t.wins}-${t.losses}</text>
+      <text x="870" y="${y}" text-anchor="end" font-family="Inter, sans-serif" font-size="20" font-weight="600" fill="${
         t.diff >= 0 ? "#10b981" : "#f87171"
       }" font-variant-numeric="tabular-nums">${t.diff > 0 ? "+" : ""}${t.diff}</text>
       ${advanceBadge}
@@ -115,7 +142,7 @@ export function renderBracketSvg(args: {
   const yTop = 320;
   const yBottom = 820;
 
-  const headline = `<text x="${W / 2}" y="420" text-anchor="middle" font-family="sans-serif" font-size="78" font-weight="800" fill="#ffffff" letter-spacing="3">${esc(
+  const headline = `<text x="${W / 2}" y="420" text-anchor="middle" font-family="Inter, sans-serif" font-size="78" font-weight="800" fill="#ffffff" letter-spacing="3">${esc(
     stageLabel.toUpperCase()
   )}</text>`;
 
@@ -136,23 +163,23 @@ export function renderBracketSvg(args: {
     const scoreB = m.hasScore ? `${m.scoreB}` : "";
     const vsLabel = m.hasScore ? "" : "vs";
     return `
-      <text x="100" y="${y + 30}" font-family="sans-serif" font-size="26" font-weight="${aWeight}" fill="${aFill}">${esc(
+      <text x="100" y="${y + 30}" font-family="Inter, sans-serif" font-size="26" font-weight="${aWeight}" fill="${aFill}">${esc(
         m.teamALabel
       )}</text>
-      <text x="${W - 100}" y="${y + 30}" text-anchor="end" font-family="sans-serif" font-size="32" font-weight="800" fill="#fbbf24" font-variant-numeric="tabular-nums">${scoreA}</text>
+      <text x="${W - 100}" y="${y + 30}" text-anchor="end" font-family="Inter, sans-serif" font-size="32" font-weight="800" fill="#fbbf24" font-variant-numeric="tabular-nums">${scoreA}</text>
 
       ${
         vsLabel
           ? `<text x="${
               W / 2
-            }" y="${y + 60}" text-anchor="middle" font-family="sans-serif" font-size="14" font-weight="700" fill="#71717a" letter-spacing="2">${vsLabel}</text>`
+            }" y="${y + 60}" text-anchor="middle" font-family="Inter, sans-serif" font-size="14" font-weight="700" fill="#71717a" letter-spacing="2">${vsLabel}</text>`
           : ""
       }
 
-      <text x="100" y="${y + 80}" font-family="sans-serif" font-size="26" font-weight="${bWeight}" fill="${bFill}">${esc(
+      <text x="100" y="${y + 80}" font-family="Inter, sans-serif" font-size="26" font-weight="${bWeight}" fill="${bFill}">${esc(
         m.teamBLabel
       )}</text>
-      <text x="${W - 100}" y="${y + 80}" text-anchor="end" font-family="sans-serif" font-size="32" font-weight="800" fill="#fbbf24" font-variant-numeric="tabular-nums">${scoreB}</text>
+      <text x="${W - 100}" y="${y + 80}" text-anchor="end" font-family="Inter, sans-serif" font-size="32" font-weight="800" fill="#fbbf24" font-variant-numeric="tabular-nums">${scoreB}</text>
 
       <line x1="100" y1="${y + 95}" x2="${W - 100}" y2="${y + 95}" stroke="rgba(255,255,255,0.15)" stroke-width="1" />
     `;
@@ -172,24 +199,24 @@ export function renderTournamentResultSvg(args: {
   const yBottom = 820;
 
   const subhead = categoryDisplay
-    ? `<text x="${W / 2}" y="${yTop + 50}" text-anchor="middle" font-family="sans-serif" font-size="22" font-weight="600" fill="#fbbf24" letter-spacing="3">${esc(
+    ? `<text x="${W / 2}" y="${yTop + 50}" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="600" fill="#fbbf24" letter-spacing="3">${esc(
         categoryDisplay.toUpperCase()
       )}</text>`
     : "";
 
-  const headline = `<text x="${W / 2}" y="${yTop + 110}" text-anchor="middle" font-family="sans-serif" font-size="62" font-weight="800" fill="#ffffff" letter-spacing="3">CAMPEONES · CHAMPIONS</text>`;
+  const headline = `<text x="${W / 2}" y="${yTop + 110}" text-anchor="middle" font-family="Inter, sans-serif" font-size="62" font-weight="800" fill="#ffffff" letter-spacing="3">CAMPEONES · CHAMPIONS</text>`;
 
   const champion = `
-    <text x="${W / 2}" y="${yTop + 200}" text-anchor="middle" font-family="sans-serif" font-size="28" fill="#fbbf24">🏆</text>
-    <text x="${W / 2}" y="${yTop + 250}" text-anchor="middle" font-family="sans-serif" font-size="40" font-weight="800" fill="#ffffff">${esc(
+    <text x="${W / 2}" y="${yTop + 200}" text-anchor="middle" font-family="Inter, sans-serif" font-size="28" fill="#fbbf24">🏆</text>
+    <text x="${W / 2}" y="${yTop + 250}" text-anchor="middle" font-family="Inter, sans-serif" font-size="40" font-weight="800" fill="#ffffff">${esc(
       championLabel
     )}</text>
   `;
 
   const runnerUp = runnerUpLabel
     ? `
-      <text x="${W / 2}" y="${yTop + 320}" text-anchor="middle" font-family="sans-serif" font-size="18" font-weight="700" fill="#a1a1aa" letter-spacing="3">SUBCAMPEONES · RUNNER-UP</text>
-      <text x="${W / 2}" y="${yTop + 355}" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="700" fill="#e4e4e7">${esc(
+      <text x="${W / 2}" y="${yTop + 320}" text-anchor="middle" font-family="Inter, sans-serif" font-size="18" font-weight="700" fill="#a1a1aa" letter-spacing="3">SUBCAMPEONES · RUNNER-UP</text>
+      <text x="${W / 2}" y="${yTop + 355}" text-anchor="middle" font-family="Inter, sans-serif" font-size="28" font-weight="700" fill="#e4e4e7">${esc(
         runnerUpLabel
       )}</text>
     `
@@ -197,11 +224,11 @@ export function renderTournamentResultSvg(args: {
 
   const sf = semifinalistLabels.length
     ? `
-      <text x="${W / 2}" y="${yTop + 410}" text-anchor="middle" font-family="sans-serif" font-size="14" font-weight="700" fill="#71717a" letter-spacing="3">SEMIFINALISTAS</text>
+      <text x="${W / 2}" y="${yTop + 410}" text-anchor="middle" font-family="Inter, sans-serif" font-size="14" font-weight="700" fill="#71717a" letter-spacing="3">SEMIFINALISTAS</text>
       ${semifinalistLabels
         .slice(0, 2)
         .map(
-          (l, i) => `<text x="${W / 2}" y="${yTop + 440 + i * 32}" text-anchor="middle" font-family="sans-serif" font-size="22" fill="#a1a1aa">${esc(
+          (l, i) => `<text x="${W / 2}" y="${yTop + 440 + i * 32}" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" fill="#a1a1aa">${esc(
             l
           )}</text>`
         )
@@ -221,7 +248,18 @@ export function renderTournamentResultSvg(args: {
   ].join("\n");
 }
 
-/** Composite an SVG overlay on top of a template image and return PNG. */
+/**
+ * Composite an SVG overlay on top of a template image and return PNG.
+ *
+ * The SVG → PNG step uses resvg-js with explicit Inter font buffers
+ * because Sharp/libvips's text rendering on Vercel's Lambda doesn't
+ * have a usable sans-serif font available — text comes out as tofu
+ * boxes. resvg accepts the font buffers directly, sidestepping the
+ * fontconfig dance entirely.
+ *
+ * Sharp still handles the final image-on-image composite (which is
+ * pixel blending only, no text).
+ */
 export async function compositeOverTemplate(args: {
   templateUrl: string;
   overlaySvg: string;
@@ -235,10 +273,16 @@ export async function compositeOverTemplate(args: {
     .resize(W, H, { fit: "cover" })
     .toBuffer();
 
-  const overlay = await sharp(Buffer.from(overlaySvg, "utf8"), { density: 96 })
-    .resize(W, H, { fit: "fill" })
-    .png()
-    .toBuffer();
+  const resvg = new Resvg(overlaySvg, {
+    background: "rgba(0,0,0,0)",
+    fitTo: { mode: "width", value: W },
+    font: {
+      fontFiles: FONT_FILES,
+      defaultFontFamily: "Inter",
+      loadSystemFonts: false,
+    },
+  });
+  const overlay = Buffer.from(resvg.render().asPng());
 
   return await sharp(backdrop)
     .composite([{ input: overlay, blend: "over" }])
