@@ -357,72 +357,71 @@ function CategoryPools({
                     <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
                       Round-robin ({games.length} games)
                     </p>
-                    <ul className="space-y-1.5 text-xs">
+                    <ul className="space-y-2 text-xs">
                       {games.map((g) => {
                         const a = teamById.get(g.team_a_id ?? "");
                         const b = teamById.get(g.team_b_id ?? "");
                         const aLabel = teamLabel(a);
                         const bLabel = teamLabel(b);
                         const hasScore = g.score_a != null && g.score_b != null;
+                        const aWon = hasScore && (g.score_a as number) > (g.score_b as number);
                         const canEnter = !!a && !!b && !!format;
+                        const open = () =>
+                          canEnter &&
+                          onOpenGame({
+                            id: g.id,
+                            stage: g.stage,
+                            team_a_label: aLabel,
+                            team_b_label: bLabel,
+                            score_a: g.score_a,
+                            score_b: g.score_b,
+                            format,
+                            pool_letter: pool.letter,
+                          });
                         return (
-                          <li
-                            key={g.id}
-                            className="flex items-center justify-between gap-2 rounded-md px-1 py-1 hover:bg-zinc-900/60"
-                          >
-                            <span className="text-zinc-500">R{g.round}</span>
-                            <span className="min-w-0 flex-1 truncate text-zinc-200">
-                              {aLabel} <span className="text-zinc-500">vs</span> {bLabel}
-                            </span>
-                            {hasScore ? (
-                              <button
-                                type="button"
-                                disabled={!canEnter}
-                                onClick={() =>
-                                  canEnter &&
-                                  onOpenGame({
-                                    id: g.id,
-                                    stage: g.stage,
-                                    team_a_label: aLabel,
-                                    team_b_label: bLabel,
-                                    score_a: g.score_a,
-                                    score_b: g.score_b,
-                                    format,
-                                    pool_letter: pool.letter,
-                                  })
-                                }
-                                className="rounded-md bg-zinc-800 px-2 py-0.5 text-[11px] font-semibold text-emerald-300 hover:bg-zinc-700 disabled:opacity-50"
-                                title="Edit score"
+                          <li key={g.id}>
+                            <button
+                              type="button"
+                              disabled={!canEnter}
+                              onClick={open}
+                              className="block w-full rounded-md border border-zinc-800 bg-zinc-900/40 px-3 py-2 text-left hover:border-emerald-700 disabled:cursor-default disabled:hover:border-zinc-800"
+                            >
+                              <div className="mb-1 flex items-center justify-between gap-2 text-[10px] uppercase tracking-wider text-zinc-500">
+                                <span>
+                                  R{g.round}
+                                  {g.court_id && (
+                                    <span className="ml-2 text-zinc-600">
+                                      {courtBadge(courtById.get(g.court_id))}
+                                    </span>
+                                  )}
+                                </span>
+                                {hasScore ? (
+                                  <span className="rounded bg-zinc-800 px-1.5 py-0.5 text-[11px] font-semibold tabular-nums text-emerald-300">
+                                    {g.score_a}–{g.score_b}
+                                  </span>
+                                ) : (
+                                  canEnter && (
+                                    <span className="text-[10px] font-semibold text-emerald-400">
+                                      Enter score →
+                                    </span>
+                                  )
+                                )}
+                              </div>
+                              <p
+                                className={`text-sm ${
+                                  hasScore && aWon ? "font-semibold text-white" : "text-zinc-200"
+                                }`}
                               >
-                                {g.score_a}–{g.score_b}
-                              </button>
-                            ) : (
-                              <button
-                                type="button"
-                                disabled={!canEnter}
-                                onClick={() =>
-                                  canEnter &&
-                                  onOpenGame({
-                                    id: g.id,
-                                    stage: g.stage,
-                                    team_a_label: aLabel,
-                                    team_b_label: bLabel,
-                                    score_a: g.score_a,
-                                    score_b: g.score_b,
-                                    format,
-                                    pool_letter: pool.letter,
-                                  })
-                                }
-                                className="rounded-md border border-zinc-800 bg-zinc-950 px-2 py-0.5 text-[10px] text-zinc-300 hover:border-emerald-700 hover:text-emerald-300 disabled:opacity-50"
+                                {aLabel}
+                              </p>
+                              <p
+                                className={`text-sm ${
+                                  hasScore && !aWon ? "font-semibold text-white" : "text-zinc-200"
+                                }`}
                               >
-                                Enter score
-                              </button>
-                            )}
-                            {g.court_id && (
-                              <span className="text-[10px] text-zinc-500">
-                                {courtBadge(courtById.get(g.court_id))}
-                              </span>
-                            )}
+                                {bLabel}
+                              </p>
+                            </button>
                           </li>
                         );
                       })}
@@ -610,7 +609,7 @@ function BracketGrid({
 
 function courtBadge(c: TournamentCourt | undefined): string {
   if (!c) return "";
-  return c.name ? `Court ${c.number} — ${c.name}` : `Court ${c.number}`;
+  return `Court ${c.number}`;
 }
 
 void (null as unknown as CategoryType);

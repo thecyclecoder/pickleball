@@ -593,7 +593,7 @@ function CategoryPoolsPublic({
 
   function courtBadge(c: TournamentCourt | undefined): string | null {
     if (!c) return null;
-    return c.name ? `${locale === "es" ? "Cancha" : "Court"} ${c.number} — ${c.name}` : `${locale === "es" ? "Cancha" : "Court"} ${c.number}`;
+    return `${locale === "es" ? "Cancha" : "Court"} ${c.number}`;
   }
 
   const labels =
@@ -704,32 +704,46 @@ function CategoryPoolsPublic({
                 <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
                   {labels.roundRobin(poolGames.length)}
                 </p>
-                <ul className="space-y-1.5 text-xs">
+                <ul className="space-y-2 text-xs">
                   {poolGames.map((g) => {
                     const a = teamById.get(g.team_a_id ?? "");
                     const b = teamById.get(g.team_b_id ?? "");
                     const hasScore = g.score_a != null && g.score_b != null;
                     const aWon = hasScore && (g.score_a as number) > (g.score_b as number);
+                    const gameCourt = g.court_id ? courtBadge(courtById.get(g.court_id)) : null;
                     return (
-                      <li key={g.id} className="flex items-center justify-between gap-2">
-                        <span className="text-zinc-500">
-                          {labels.round}
-                          {g.round}
-                        </span>
-                        <span className="min-w-0 flex-1 truncate text-zinc-200">
-                          <span className={hasScore && aWon ? "font-semibold text-white" : ""}>
-                            {teamLabel(a)}
-                          </span>{" "}
-                          <span className="text-zinc-500">{labels.vs}</span>{" "}
-                          <span className={hasScore && !aWon ? "font-semibold text-white" : ""}>
-                            {teamLabel(b)}
+                      <li
+                        key={g.id}
+                        className="rounded-md border border-zinc-800 bg-zinc-900/40 px-3 py-2"
+                      >
+                        <div className="mb-1 flex items-center justify-between gap-2 text-[10px] uppercase tracking-wider text-zinc-500">
+                          <span>
+                            {labels.round}
+                            {g.round}
+                            {gameCourt && (
+                              <span className="ml-2 text-zinc-600">{gameCourt}</span>
+                            )}
                           </span>
-                        </span>
-                        {hasScore && (
-                          <span className="rounded bg-zinc-800 px-1.5 py-0.5 text-[11px] font-semibold tabular-nums text-emerald-300">
-                            {g.score_a}–{g.score_b}
-                          </span>
-                        )}
+                          {hasScore && (
+                            <span className="rounded bg-zinc-800 px-1.5 py-0.5 text-[11px] font-semibold tabular-nums text-emerald-300">
+                              {g.score_a}–{g.score_b}
+                            </span>
+                          )}
+                        </div>
+                        <p
+                          className={`text-sm ${
+                            hasScore && aWon ? "font-semibold text-white" : "text-zinc-200"
+                          }`}
+                        >
+                          {teamLabel(a)}
+                        </p>
+                        <p
+                          className={`text-sm ${
+                            hasScore && !aWon ? "font-semibold text-white" : "text-zinc-200"
+                          }`}
+                        >
+                          {teamLabel(b)}
+                        </p>
                       </li>
                     );
                   })}
