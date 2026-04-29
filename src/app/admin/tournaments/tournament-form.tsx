@@ -31,6 +31,7 @@ type TournamentFormInput = {
   google_maps_url: string;
   status: "draft" | "published" | "cancelled" | "completed";
   registration_open: boolean;
+  sandbox_mode: boolean;
   images: TournamentImage[];
   payment_qr_url: string;
   payment_instructions: string;
@@ -103,6 +104,7 @@ export function TournamentForm({
       google_maps_url: "",
       status: "draft",
       registration_open: true,
+      sandbox_mode: false,
       images: [],
       payment_qr_url: "",
       payment_instructions: "",
@@ -178,6 +180,7 @@ export function TournamentForm({
         google_maps_url: form.google_maps_url || null,
         status: form.status,
         registration_open: form.registration_open,
+        sandbox_mode: form.sandbox_mode,
         images: form.images,
         flyer_image_url: form.images[0] ? largestSrc(form.images[0]) : null,
         payment_qr_url: form.payment_qr_url || null,
@@ -525,6 +528,29 @@ export function TournamentForm({
             Registration open
           </label>
         </div>
+        <label
+          className={`mt-3 flex items-start gap-3 rounded-lg border p-3 text-sm ${
+            form.sandbox_mode
+              ? "border-amber-700 bg-amber-950/30 text-amber-100"
+              : "border-zinc-800 bg-zinc-950 text-white"
+          }`}
+        >
+          <input
+            type="checkbox"
+            checked={form.sandbox_mode}
+            onChange={(e) => update("sandbox_mode", e.currentTarget.checked)}
+            className="mt-0.5 h-4 w-4 rounded border-zinc-700 bg-zinc-900 text-amber-500 focus:ring-amber-500"
+          />
+          <div>
+            <p className="font-medium">Sandbox mode</p>
+            <p className="mt-0.5 text-xs text-zinc-400">
+              Score-entry notifications go only to workspace owners + admins, prefixed
+              <code className="mx-1 text-amber-300">[SANDBOX]</code>. Live data on the public
+              page (pool standings, bracket, scores) hides from non-members. Flip OFF before
+              tournament day.
+            </p>
+          </div>
+        </label>
       </Section>
 
       {error && (

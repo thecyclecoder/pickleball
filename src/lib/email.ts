@@ -987,6 +987,180 @@ Don't want WhatsApp updates? Just ignore this email — you'll still get tournam
   if (error) console.error("Resend send error (phone update request):", error, "to:", toEmail);
 }
 
+type PoolAnnouncementEmailArgs = {
+  toEmail: string;
+  toFirstName: string;
+  partnerName: string;
+  poolLetter: string;
+  /** Final court label as displayed — caller supplies the canonical
+   *  string ("Court 1", "Center Court", etc.) so we don't double up
+   *  number + name. */
+  courtLabel: string;
+  /** Public URL of the pool graphic image (1080×1350-ish) */
+  graphicUrl: string;
+  tournamentTitle: string;
+  /** Pre-formatted in Spanish e.g. "Sábado, 9 de mayo · El Mulo, Juncos PR" */
+  whenWhereEs: string;
+  /** Pre-formatted in English e.g. "Saturday, May 9 · El Mulo, Juncos PR" */
+  whenWhereEn: string;
+  /** Public tournament page URL */
+  tournamentUrl: string;
+  /** Optional Resend scheduled_at — ISO 8601 string. Empty = send now. */
+  scheduledAt?: string;
+};
+
+export async function sendPoolAnnouncementEmail(
+  args: PoolAnnouncementEmailArgs
+): Promise<{ id: string | null }> {
+  const {
+    toEmail,
+    toFirstName,
+    partnerName,
+    poolLetter,
+    courtLabel,
+    graphicUrl,
+    tournamentTitle,
+    whenWhereEs,
+    whenWhereEn,
+    tournamentUrl,
+    scheduledAt,
+  } = args;
+  // Bilingual subject — Spanish first since the audience is mostly PR.
+  const subject = `🔥 Tu Pool ${poolLetter} · Money Ball / Your Money Ball draw`;
+  const headlineEs = `Estás en el Pool ${poolLetter}`;
+  const headlineEn = `You're in Pool ${poolLetter}`;
+
+  const html = `<!doctype html>
+<html><head><meta charset="utf-8" /><meta name="format-detection" content="telephone=no, address=no, email=no" /><title>${escapeHtml(subject)}</title></head>
+<body style="margin:0;padding:0;background:#09090b;color:#fafafa;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#09090b;padding:24px 16px;">
+    <tr><td align="center">
+      <table role="presentation" width="560" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;width:100%;background:#18181b;border:1px solid #27272a;border-radius:16px;overflow:hidden;">
+        <tr><td style="padding:24px 28px 12px;">
+          <div style="font-size:18px;font-weight:700;letter-spacing:-0.5px;color:#fafafa;">Buen Tiro</div>
+          <div style="height:2px;width:36px;background:#10b981;border-radius:2px;margin-top:6px;"></div>
+        </td></tr>
+
+        <!-- ── Spanish first ──────────────────────────────────── -->
+        <tr><td style="padding:0 28px 8px;">
+          <p style="margin:0 0 4px;font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#71717a;">${escapeHtml(tournamentTitle)}</p>
+          <h1 style="margin:0 0 12px;font-size:28px;line-height:1.2;color:#fafafa;font-weight:700;">${escapeHtml(headlineEs)}</h1>
+          <p style="margin:0 0 20px;font-size:15px;line-height:1.55;color:#a1a1aa;">Hola ${escapeHtml(toFirstName)} — el sorteo está listo. Aquí está el tuyo:</p>
+        </td></tr>
+        <tr><td style="padding:0 0 16px;">
+          <a href="${tournamentUrl}" style="display:block;text-decoration:none;">
+            <!--[if !mso]><!-->
+            <img src="${graphicUrl}" alt="Pool ${escapeHtml(poolLetter)}" style="display:block;width:100%;height:auto;max-width:560px;" />
+            <!--<![endif]-->
+          </a>
+        </td></tr>
+        <tr><td style="padding:0 28px 16px;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#09090b;border:1px solid #27272a;border-radius:12px;">
+            <tr><td style="padding:12px 16px;">
+              <div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#71717a;">Tu cancha</div>
+              <div style="font-size:15px;color:#fafafa;margin-top:2px;">${escapeHtml(courtLabel)}</div>
+            </td></tr>
+            <tr><td style="padding:0 16px 12px;">
+              <div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#71717a;">Compañero</div>
+              <div style="font-size:15px;color:#fafafa;margin-top:2px;">${escapeHtml(partnerName)}</div>
+            </td></tr>
+            <tr><td style="padding:0 16px 12px;">
+              <div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#71717a;">Cuándo y dónde</div>
+              <div style="font-size:15px;color:#fafafa;margin-top:2px;">${escapeHtml(whenWhereEs)}</div>
+            </td></tr>
+          </table>
+        </td></tr>
+        <tr><td style="padding:0 28px 16px;">
+          <a href="${tournamentUrl}" style="display:inline-block;background:#10b981;color:#ffffff;text-decoration:none;font-weight:600;font-size:14px;padding:12px 22px;border-radius:10px;">Ver el schedule completo</a>
+        </td></tr>
+        <tr><td style="padding:0 28px 8px;">
+          <p style="margin:0;font-size:12px;color:#71717a;line-height:1.55;">Más anuncios de pools cada día esta semana. 🎾</p>
+        </td></tr>
+
+        <!-- ── Divider ────────────────────────────────────────── -->
+        <tr><td style="padding:20px 28px 4px;">
+          <div style="height:1px;background:#27272a;"></div>
+        </td></tr>
+
+        <!-- ── English ────────────────────────────────────────── -->
+        <tr><td style="padding:8px 28px 8px;">
+          <p style="margin:0 0 4px;font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#71717a;">In English</p>
+          <h2 style="margin:0 0 8px;font-size:22px;line-height:1.25;color:#fafafa;font-weight:700;">${escapeHtml(headlineEn)}</h2>
+          <p style="margin:0 0 16px;font-size:14px;line-height:1.55;color:#a1a1aa;">Hi ${escapeHtml(toFirstName)} — pool draw is live. Here&apos;s yours (graphic above).</p>
+        </td></tr>
+        <tr><td style="padding:0 28px 16px;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#09090b;border:1px solid #27272a;border-radius:12px;">
+            <tr><td style="padding:12px 16px;">
+              <div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#71717a;">Your court</div>
+              <div style="font-size:14px;color:#fafafa;margin-top:2px;">${escapeHtml(courtLabel)}</div>
+            </td></tr>
+            <tr><td style="padding:0 16px 12px;">
+              <div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#71717a;">Partner</div>
+              <div style="font-size:14px;color:#fafafa;margin-top:2px;">${escapeHtml(partnerName)}</div>
+            </td></tr>
+            <tr><td style="padding:0 16px 12px;">
+              <div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#71717a;">When &amp; where</div>
+              <div style="font-size:14px;color:#fafafa;margin-top:2px;">${escapeHtml(whenWhereEn)}</div>
+            </td></tr>
+          </table>
+        </td></tr>
+        <tr><td style="padding:0 28px 12px;">
+          <a href="${tournamentUrl}" style="display:inline-block;background:#27272a;color:#fafafa;text-decoration:none;font-weight:600;font-size:14px;padding:10px 20px;border-radius:10px;">View full schedule</a>
+        </td></tr>
+        <tr><td style="padding:0 28px 28px;">
+          <p style="margin:0;font-size:12px;color:#71717a;line-height:1.55;">More pool announcements drop daily this week. 🎾</p>
+        </td></tr>
+      </table>
+      <p style="margin:16px 0 0;font-size:11px;color:#52525b;">Buen Tiro · <a href="${SITE_URL}" style="color:#52525b;text-decoration:none;">buentiro.app</a></p>
+    </td></tr>
+  </table>
+</body></html>`;
+
+  const text = `${headlineEs}
+
+Hola ${toFirstName} — el sorteo está listo para ${tournamentTitle}.
+
+Pool: ${poolLetter}
+Cancha: ${courtLabel}
+Compañero: ${partnerName}
+${whenWhereEs}
+
+Imagen del pool: ${graphicUrl}
+Schedule completo: ${tournamentUrl}
+
+──────────────────
+
+${headlineEn}
+
+Hi ${toFirstName} — pool draw is live.
+
+Pool: ${poolLetter}
+Court: ${courtLabel}
+Partner: ${partnerName}
+${whenWhereEn}
+
+Pool graphic: ${graphicUrl}
+Full schedule: ${tournamentUrl}
+
+— Buen Tiro (${SITE_URL})`;
+
+  const payload: Record<string, unknown> = {
+    from: FROM,
+    to: toEmail,
+    subject,
+    html,
+    text,
+  };
+  if (scheduledAt) payload.scheduledAt = scheduledAt;
+
+  const { data, error } = await resend().emails.send(payload as never);
+  if (error) {
+    console.error("Resend send error (pool announcement):", error, "to:", toEmail);
+    return { id: null };
+  }
+  return { id: data?.id ?? null };
+}
+
 function escapeHtml(s: string): string {
   return s
     .replace(/&/g, "&amp;")

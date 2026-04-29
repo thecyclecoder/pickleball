@@ -6,6 +6,7 @@ import { WorkspaceSwitcher } from "./workspace-switcher";
 import { HomeLink } from "@/components/home-link";
 import { AccessDenied } from "./access-denied";
 import { AdminMenu } from "./admin-menu";
+import { AdminSidebar } from "./admin-sidebar";
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const res = await getCurrentMembership();
@@ -40,34 +41,44 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-zinc-950 text-zinc-100">
-      <header className="border-b border-zinc-900">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-4 sm:px-6">
-          <div className="flex items-center gap-2 text-white">
-            <HomeLink height={24} />
-            <Link
-              href="/admin"
-              className="hidden text-xs uppercase tracking-widest text-zinc-500 hover:text-white sm:inline"
-            >
-              Admin
-            </Link>
+    <div className="min-h-screen bg-zinc-950 text-zinc-100 lg:flex">
+      <AdminSidebar
+        userEmail={res.user.email ?? null}
+        isSuperAdmin={isSuperAdmin(res.user)}
+        workspaceKind={res.workspaceKind}
+        badges={{ lessonRequests: lessonRequestPending }}
+      />
+      <div className="flex min-w-0 flex-1 flex-col">
+        <header className="border-b border-zinc-900">
+          <div className="mx-auto flex w-full max-w-5xl items-center justify-between gap-3 px-4 py-4 sm:px-6">
+            <div className="flex items-center gap-2 text-white">
+              <HomeLink height={24} />
+              <Link
+                href="/admin"
+                className="hidden text-xs uppercase tracking-widest text-zinc-500 hover:text-white sm:inline lg:hidden"
+              >
+                Admin
+              </Link>
+            </div>
+            <div className="flex items-center gap-2 text-xs text-zinc-500 sm:gap-3">
+              <WorkspaceSwitcher
+                activeId={res.member.workspace_id}
+                options={switcherOptions}
+                canCreate={res.canCreateWorkspace}
+              />
+              <div className="lg:hidden">
+                <AdminMenu
+                  userEmail={res.user.email ?? null}
+                  isSuperAdmin={isSuperAdmin(res.user)}
+                  workspaceKind={res.workspaceKind}
+                  badges={{ lessonRequests: lessonRequestPending }}
+                />
+              </div>
+            </div>
           </div>
-          <div className="flex items-center gap-2 text-xs text-zinc-500 sm:gap-3">
-            <WorkspaceSwitcher
-              activeId={res.member.workspace_id}
-              options={switcherOptions}
-              canCreate={res.canCreateWorkspace}
-            />
-            <AdminMenu
-              userEmail={res.user.email ?? null}
-              isSuperAdmin={isSuperAdmin(res.user)}
-              workspaceKind={res.workspaceKind}
-              badges={{ lessonRequests: lessonRequestPending }}
-            />
-          </div>
-        </div>
-      </header>
-      <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 sm:px-6 sm:py-8">{children}</main>
+        </header>
+        <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-6 sm:px-6 sm:py-8">{children}</main>
+      </div>
     </div>
   );
 }

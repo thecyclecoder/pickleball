@@ -3,6 +3,8 @@ import Link from "next/link";
 import Script from "next/script";
 import { notFound } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
+import { calculatePoolStandings, tiebreakerLabel } from "@/lib/standings";
 import { formatTournamentDate, formatTime } from "@/lib/format";
 import {
   categoryLabelI18n,
@@ -154,6 +156,29 @@ export default async function TournamentDetailPage({
     | undefined;
   if (!tour || tour.status !== "published") notFound();
   const courtById = new Map(tour.courts.map((c) => [c.id, c]));
+
+  // Sandbox gating: when sandbox_mode is on, only workspace members can
+  // see live-data sections (pools, scores, bracket). Public visitors see
+  // the page minus those sections so we can dry-run end-to-end without
+  // exposing test scores to players.
+  let viewerIsWorkspaceMember = false;
+  if (tour.sandbox_mode) {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (user) {
+      const email = (user.email ?? "").toLowerCase();
+      const { data: m } = await admin
+        .from("workspace_members")
+        .select("id")
+        .eq("workspace_id", tour.workspace.id)
+        .or(`user_id.eq.${user.id}${email ? `,email.ilike.${email}` : ""}`)
+        .maybeSingle();
+      viewerIsWorkspaceMember = !!m;
+    }
+  }
+  const showLiveData = !tour.sandbox_mode || viewerIsWorkspaceMember;
 
   const sortedCategories = [...tour.categories].sort(
     (a, b) => a.sort_order - b.sort_order || a.type.localeCompare(b.type)
@@ -378,11 +403,18 @@ export default async function TournamentDetailPage({
           </ul>
         </section>
 
-        {anyPools && (
+        {anyPools && showLiveData && (
           <section className="mb-8">
             <h2 className="mb-3 text-lg font-semibold text-white sm:text-xl">
               {locale === "es" ? "Grupos y partidos" : "Pools & schedule"}
             </h2>
+            {tour.sandbox_mode && (
+              <p className="mb-3 rounded-lg border border-amber-700 bg-amber-950/30 px-4 py-2 text-xs text-amber-200">
+                {locale === "es"
+                  ? "Modo de prueba: estas tablas y puntuaciones solo son visibles para los miembros del workspace."
+                  : "Sandbox mode — these standings and scores are only visible to workspace members."}
+              </p>
+            )}
             <div className="space-y-6">
               {categoriesView
                 .filter((c) => c.pools.length > 0)
@@ -400,6 +432,42 @@ export default async function TournamentDetailPage({
             </div>
           </section>
         )}
+
+        {anyPools && !showLiveData && (
+          <section className="mb-8 rounded-xl border border-amber-900/60 bg-amber-950/20 px-5 py-4 text-sm text-amber-100/80">
+            {locale === "es"
+              ? "Este torneo está en modo de prueba. Los grupos, partidos y puntuaciones se publicarán cuando termine la fase de prueba."
+              : "This tournament is in sandbox mode. Pools, schedule, and scores will be published once testing wraps up."}
+          </section>
+        )}
+
+        {showLiveData && (() => {
+          const bracketGames = categoriesView
+            .flatMap((c) =>
+              (c.games ?? []).filter((g) => g.stage !== "pool").map((g) => ({ g, category: c }))
+            );
+          if (bracketGames.length === 0) return null;
+          return (
+            <section className="mb-8">
+              <h2 className="mb-3 text-lg font-semibold text-white sm:text-xl">
+                {locale === "es" ? "Eliminatorias" : "Bracket"}
+              </h2>
+              <div className="space-y-6">
+                {categoriesView
+                  .filter((c) => (c.games ?? []).some((g) => g.stage !== "pool"))
+                  .map((c) => (
+                    <CategoryBracketPublic
+                      key={c.id}
+                      categoryDisplay={c.display}
+                      games={c.games ?? []}
+                      teams={c.teams}
+                      locale={locale}
+                    />
+                  ))}
+              </div>
+            </section>
+          );
+        })()}
 
         {tour.registration_open && allCategoriesFull && (
           <section className="mb-8 rounded-xl border border-amber-800 bg-amber-950/20 p-5 text-center sm:p-6">
@@ -573,22 +641,65 @@ function CategoryPoolsPublic({
                 </p>
                 {courtLabel && <p className="text-xs text-emerald-400">{courtLabel}</p>}
               </div>
-              <ul className="divide-y divide-zinc-800 text-xs">
-                {poolTeams.map((t) => (
-                  <li
-                    key={t.id}
-                    className="flex items-center justify-between gap-2 px-4 py-2"
-                  >
-                    <span className="text-zinc-200">
-                      <span className="mr-2 text-zinc-500">#{t.pool_seed}</span>
-                      {teamLabel(t)}
-                    </span>
-                    <span className="text-zinc-500">
-                      {labels.seedCol} {t.seed}
-                    </span>
-                  </li>
-                ))}
-              </ul>
+              {(() => {
+                const standings = calculatePoolStandings(
+                  poolTeams.map((t) => t.id),
+                  poolGames
+                );
+                const anyPlayed = standings.some((s) => s.played > 0);
+                return (
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="border-b border-zinc-800 text-[10px] uppercase tracking-wider text-zinc-500">
+                        <th className="px-4 py-1.5 text-left font-medium">
+                          {anyPlayed ? "#" : labels.seedCol}
+                        </th>
+                        <th className="py-1.5 text-left font-medium">{labels.teamCol}</th>
+                        <th className="py-1.5 text-right font-medium">W-L</th>
+                        <th className="px-4 py-1.5 text-right font-medium">Diff</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-zinc-800">
+                      {standings.map((s) => {
+                        const t = teamById.get(s.team_id);
+                        const tieLabel = tiebreakerLabel(s.decidedBy);
+                        return (
+                          <tr key={s.team_id}>
+                            <td className="px-4 py-1.5 text-zinc-500">
+                              {anyPlayed ? s.place : t?.pool_seed ?? "—"}
+                            </td>
+                            <td className="py-1.5 text-zinc-200">
+                              {teamLabel(t)}
+                              {tieLabel && (
+                                <span
+                                  className="ml-1.5 inline-block rounded bg-amber-950/60 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-amber-300"
+                                  title={`Tiebreaker: ${tieLabel}`}
+                                >
+                                  {tieLabel}
+                                </span>
+                              )}
+                            </td>
+                            <td className="py-1.5 text-right tabular-nums text-zinc-300">
+                              {anyPlayed ? `${s.wins}-${s.losses}` : "—"}
+                            </td>
+                            <td
+                              className={`px-4 py-1.5 text-right tabular-nums ${
+                                s.diff > 0
+                                  ? "text-emerald-400"
+                                  : s.diff < 0
+                                    ? "text-red-400"
+                                    : "text-zinc-500"
+                              }`}
+                            >
+                              {anyPlayed ? (s.diff > 0 ? `+${s.diff}` : s.diff) : "—"}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                );
+              })()}
               <div className="border-t border-zinc-800 bg-zinc-950/40 px-4 py-3">
                 <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
                   {labels.roundRobin(poolGames.length)}
@@ -597,6 +708,8 @@ function CategoryPoolsPublic({
                   {poolGames.map((g) => {
                     const a = teamById.get(g.team_a_id ?? "");
                     const b = teamById.get(g.team_b_id ?? "");
+                    const hasScore = g.score_a != null && g.score_b != null;
+                    const aWon = hasScore && (g.score_a as number) > (g.score_b as number);
                     return (
                       <li key={g.id} className="flex items-center justify-between gap-2">
                         <span className="text-zinc-500">
@@ -604,14 +717,122 @@ function CategoryPoolsPublic({
                           {g.round}
                         </span>
                         <span className="min-w-0 flex-1 truncate text-zinc-200">
-                          {teamLabel(a)} <span className="text-zinc-500">{labels.vs}</span>{" "}
-                          {teamLabel(b)}
+                          <span className={hasScore && aWon ? "font-semibold text-white" : ""}>
+                            {teamLabel(a)}
+                          </span>{" "}
+                          <span className="text-zinc-500">{labels.vs}</span>{" "}
+                          <span className={hasScore && !aWon ? "font-semibold text-white" : ""}>
+                            {teamLabel(b)}
+                          </span>
                         </span>
+                        {hasScore && (
+                          <span className="rounded bg-zinc-800 px-1.5 py-0.5 text-[11px] font-semibold tabular-nums text-emerald-300">
+                            {g.score_a}–{g.score_b}
+                          </span>
+                        )}
                       </li>
                     );
                   })}
                 </ul>
               </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function CategoryBracketPublic({
+  categoryDisplay,
+  games,
+  teams,
+  locale,
+}: {
+  categoryDisplay: string;
+  games: Game[];
+  teams: LoadedTeam[];
+  locale: "en" | "es";
+}) {
+  const teamById = new Map(teams.map((t) => [t.id, t]));
+  function teamLabel(t: LoadedTeam | undefined): string {
+    if (!t) return locale === "es" ? "Por definir" : "TBD";
+    const sorted = [...t.players].sort(
+      (a, b) => Number(b.is_captain) - Number(a.is_captain)
+    );
+    return (
+      sorted
+        .map((p) => `${p.first_name} ${p.last_name.slice(0, 1)}.`)
+        .join(" / ") || "Team"
+    );
+  }
+
+  const byStage = new Map<"qf" | "sf" | "f", Game[]>();
+  for (const g of games) {
+    if (g.stage === "pool") continue;
+    const arr = byStage.get(g.stage) ?? [];
+    arr.push(g);
+    byStage.set(g.stage, arr);
+  }
+  const allStages: { key: "qf" | "sf" | "f"; labelEn: string; labelEs: string }[] = [
+    { key: "qf", labelEn: "Quarterfinals", labelEs: "Cuartos de final" },
+    { key: "sf", labelEn: "Semifinals", labelEs: "Semifinales" },
+    { key: "f", labelEn: "Final", labelEs: "Final" },
+  ];
+  const stages = allStages.filter((s) => (byStage.get(s.key) ?? []).length > 0);
+
+  return (
+    <div>
+      <h3 className="mb-3 text-base font-medium text-zinc-200">{categoryDisplay}</h3>
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {stages.map((stage) => {
+          const stageGames = (byStage.get(stage.key) ?? []).sort(
+            (a, b) => a.sort_order - b.sort_order
+          );
+          return (
+            <div key={stage.key} className="space-y-2">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
+                {locale === "es" ? stage.labelEs : stage.labelEn}
+              </p>
+              {stageGames.map((g) => {
+                const a = teamById.get(g.team_a_id ?? "");
+                const b = teamById.get(g.team_b_id ?? "");
+                const aLabel = teamLabel(a);
+                const bLabel = teamLabel(b);
+                const hasScore = g.score_a != null && g.score_b != null;
+                const aWon = hasScore && (g.score_a as number) > (g.score_b as number);
+                return (
+                  <div
+                    key={g.id}
+                    className="rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2 text-xs"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span
+                        className={`min-w-0 flex-1 truncate ${
+                          hasScore && aWon ? "font-semibold text-white" : "text-zinc-300"
+                        } ${!a ? "italic text-zinc-500" : ""}`}
+                      >
+                        {aLabel}
+                      </span>
+                      {hasScore && (
+                        <span className="tabular-nums text-emerald-300">{g.score_a}</span>
+                      )}
+                    </div>
+                    <div className="mt-1 flex items-center justify-between gap-2">
+                      <span
+                        className={`min-w-0 flex-1 truncate ${
+                          hasScore && !aWon ? "font-semibold text-white" : "text-zinc-300"
+                        } ${!b ? "italic text-zinc-500" : ""}`}
+                      >
+                        {bLabel}
+                      </span>
+                      {hasScore && (
+                        <span className="tabular-nums text-emerald-300">{g.score_b}</span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           );
         })}

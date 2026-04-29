@@ -70,6 +70,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     "google_maps_url",
     "status",
     "registration_open",
+    "sandbox_mode",
     "payment_qr_url",
     "payment_instructions",
     "payment_instructions_es",

@@ -80,6 +80,10 @@ export type Tournament = {
   google_maps_url: string | null;
   status: TournamentStatus;
   registration_open: boolean;
+  /** When true, score-entry notifications go only to workspace
+   *  owners/admins, and live-data sections on the public page hide
+   *  from non-members. */
+  sandbox_mode: boolean;
   payment_qr_url: string | null;
   payment_instructions: string | null;
   payment_instructions_es: string | null;

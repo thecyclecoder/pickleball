@@ -109,6 +109,17 @@ export default async function AdminTournamentEditPage({
 
   return (
     <div>
+      {tournament.sandbox_mode && (
+        <div className="mb-4 rounded-xl border border-amber-700 bg-amber-950/30 px-5 py-3">
+          <p className="text-sm font-semibold text-amber-200">⚠ Sandbox mode active</p>
+          <p className="mt-0.5 text-xs text-amber-100/80">
+            Score-entry notifications go only to workspace owners + admins (with{" "}
+            <code className="rounded bg-amber-900/40 px-1">[SANDBOX]</code> prefix). Live data on the
+            public page is hidden from non-members. Flip OFF in Visibility before tournament day.
+          </p>
+        </div>
+      )}
+
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
           <Link href="/admin/tournaments" className="text-xs text-zinc-400 hover:text-white">
@@ -157,6 +168,7 @@ export default async function AdminTournamentEditPage({
             tournamentId={tournament.id}
             categories={poolCategoriesView}
             courts={sortedCourts}
+            formats={formats}
           />
         </div>
       )}
@@ -184,6 +196,7 @@ export default async function AdminTournamentEditPage({
             google_maps_url: tournament.google_maps_url ?? "",
             status: tournament.status,
             registration_open: tournament.registration_open,
+            sandbox_mode: tournament.sandbox_mode ?? false,
             images: tournament.images ?? [],
             payment_qr_url: tournament.payment_qr_url ?? "",
             payment_instructions: tournament.payment_instructions ?? "",
@@ -215,7 +228,11 @@ export default async function AdminTournamentEditPage({
       </div>
 
       <div className="mt-10">
-        <DangerZone tournamentId={tournament.id} tournamentTitle={tournament.title} />
+        <DangerZone
+          tournamentId={tournament.id}
+          tournamentTitle={tournament.title}
+          isOwner={res.member.role === "owner"}
+        />
       </div>
     </div>
   );

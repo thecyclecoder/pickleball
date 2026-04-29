@@ -29,3 +29,14 @@ export async function requireOwnerOrAdmin(): Promise<
   }
   return res;
 }
+
+export async function requireOwner(): Promise<
+  { ok: true; ctx: AuthorizedContext } | { ok: false; response: NextResponse }
+> {
+  const res = await requireMember();
+  if (!res.ok) return res;
+  if (res.ctx.member.role !== "owner") {
+    return { ok: false, response: NextResponse.json({ error: "Forbidden" }, { status: 403 }) };
+  }
+  return res;
+}
