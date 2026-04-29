@@ -42,27 +42,39 @@ export function PoolsPanel({
   const [openGame, setOpenGame] = useState<WorksheetGame | null>(null);
 
   return (
-    <section className="space-y-6">
-      <div>
-        <h2 className="text-lg font-semibold text-white">Pools &amp; bracket</h2>
-        <p className="mt-1 text-xs text-zinc-500">
-          Snake-seeded by combined player rating, round-robin within each pool. Cancelled and
-          waitlisted teams are excluded. Regenerate anytime — wipes prior pool/game data and
-          reseeds from current registrations.
-        </p>
+    <details open className="group">
+      <summary className="flex cursor-pointer list-none items-center justify-between rounded-lg px-1 py-1 hover:bg-zinc-900/40 [&::-webkit-details-marker]:hidden">
+        <div>
+          <h2 className="text-lg font-semibold text-white">Pools &amp; bracket</h2>
+          <p className="mt-1 text-xs text-zinc-500">
+            Snake-seeded by combined player rating, round-robin within each pool. Cancelled and
+            waitlisted teams are excluded.
+          </p>
+        </div>
+        <svg
+          className="h-4 w-4 text-zinc-500 transition-transform group-open:rotate-180"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+        >
+          <path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </summary>
+      <div className="mt-4 space-y-6">
+        {categories.map((c) => (
+          <CategoryPools
+            key={c.id}
+            tournamentId={tournamentId}
+            category={c}
+            courtById={courtById}
+            format={c.format_id ? formatById.get(c.format_id) ?? null : null}
+            onOpenGame={setOpenGame}
+          />
+        ))}
+        <ScoreWorksheet game={openGame} onClose={() => setOpenGame(null)} />
       </div>
-      {categories.map((c) => (
-        <CategoryPools
-          key={c.id}
-          tournamentId={tournamentId}
-          category={c}
-          courtById={courtById}
-          format={c.format_id ? formatById.get(c.format_id) ?? null : null}
-          onOpenGame={setOpenGame}
-        />
-      ))}
-      <ScoreWorksheet game={openGame} onClose={() => setOpenGame(null)} />
-    </section>
+    </details>
   );
 }
 

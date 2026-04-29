@@ -173,8 +173,20 @@ export default async function AdminTournamentEditPage({
         </div>
       )}
 
-      <div className="mt-8">
-        <h2 className="mb-4 text-lg font-semibold text-white">Edit</h2>
+      <details className="group mt-8">
+        <summary className="flex cursor-pointer list-none items-center justify-between rounded-lg px-1 py-1 hover:bg-zinc-900/40 [&::-webkit-details-marker]:hidden">
+          <h2 className="text-lg font-semibold text-white">Edit</h2>
+          <svg
+            className="h-4 w-4 text-zinc-500 transition-transform group-open:rotate-180"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+          >
+            <path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </summary>
+        <div className="mt-4">
         <TournamentForm
           mode="edit"
           initialTournament={{
@@ -225,7 +237,8 @@ export default async function AdminTournamentEditPage({
           }))}
           formats={formats}
         />
-      </div>
+        </div>
+      </details>
 
       <div className="mt-10">
         <DangerZone

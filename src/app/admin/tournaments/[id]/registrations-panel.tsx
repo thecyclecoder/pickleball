@@ -62,11 +62,24 @@ export function RegistrationsPanel({
     byCategory.set(t.category_id, list);
   }
 
+  const totalActive = teams.filter((t) => t.status !== "cancelled").length;
   return (
-    <section className="rounded-xl border border-zinc-800 bg-zinc-900">
-      <div className="border-b border-zinc-800 px-5 py-3">
-        <h2 className="text-sm font-semibold text-white">Registrations</h2>
-      </div>
+    <details open className="group rounded-xl border border-zinc-800 bg-zinc-900">
+      <summary className="flex cursor-pointer list-none items-center justify-between border-zinc-800 px-5 py-3 group-open:border-b [&::-webkit-details-marker]:hidden">
+        <h2 className="text-sm font-semibold text-white">
+          Registrations
+          <span className="ml-2 text-xs font-normal text-zinc-500">{totalActive}</span>
+        </h2>
+        <svg
+          className="h-4 w-4 text-zinc-500 transition-transform group-open:rotate-180"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+        >
+          <path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </summary>
       {categories.length === 0 ? (
         <p className="px-5 py-6 text-center text-sm text-zinc-500">Add a category first.</p>
       ) : (
@@ -184,6 +197,6 @@ export function RegistrationsPanel({
           })}
         </div>
       )}
-    </section>
+    </details>
   );
 }

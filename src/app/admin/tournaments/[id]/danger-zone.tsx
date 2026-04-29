@@ -55,8 +55,20 @@ export function DangerZone({
   }
 
   return (
-    <section className="rounded-xl border border-red-900 bg-red-950/20 p-5">
-      <h3 className="text-sm font-semibold text-red-300">Danger zone</h3>
+    <details className="group rounded-xl border border-red-900 bg-red-950/20">
+      <summary className="flex cursor-pointer list-none items-center justify-between p-5 [&::-webkit-details-marker]:hidden">
+        <h3 className="text-sm font-semibold text-red-300">Danger zone</h3>
+        <svg
+          className="h-4 w-4 text-red-300/60 transition-transform group-open:rotate-180"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+        >
+          <path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </summary>
+      <div className="px-5 pb-5">
 
       {isOwner && (
         <div className="mt-3 border-b border-red-900/60 pb-4">
@@ -89,6 +101,7 @@ export function DangerZone({
       >
         {busy === "delete" ? "Deleting…" : "Delete tournament"}
       </button>
-    </section>
+      </div>
+    </details>
   );
 }
