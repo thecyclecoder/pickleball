@@ -8,6 +8,7 @@ import { TournamentForm } from "../tournament-form";
 import { RegistrationsPanel } from "./registrations-panel";
 import { DangerZone } from "./danger-zone";
 import { SendResultsButton } from "./send-results-button";
+import { GraphicsPanel, type GraphicRow } from "./graphics-panel";
 import type {
   Tournament,
   TournamentCategory,
@@ -80,6 +81,14 @@ export default async function AdminTournamentEditPage({
     .eq("workspace_id", res.member.workspace_id)
     .order("created_at", { ascending: false });
   const formats = (formatRows ?? []) as TournamentFormat[];
+
+  const { data: graphicRows } = await admin
+    .from("tournament_graphics")
+    .select("id, type, svg, png_url, approved, feedback_history, updated_at")
+    .eq("tournament_id", id);
+  const graphics = (graphicRows ?? []) as GraphicRow[];
+  const hasReferenceImage =
+    (tournament.images && tournament.images.length > 0) || !!tournament.flyer_image_url;
 
   const sortedCourts = [...tournament.courts].sort(
     (a, b) => a.sort_order - b.sort_order || a.number - b.number
@@ -179,6 +188,14 @@ export default async function AdminTournamentEditPage({
           tournamentId={tournament.id}
           tournamentTitle={tournament.title}
           sandboxMode={tournament.sandbox_mode ?? false}
+        />
+      </div>
+
+      <div className="mt-6">
+        <GraphicsPanel
+          tournamentId={tournament.id}
+          graphics={graphics}
+          hasReferenceImage={hasReferenceImage}
         />
       </div>
 
