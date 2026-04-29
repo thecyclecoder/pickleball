@@ -66,6 +66,57 @@ export const CANONICAL_TEMPLATES: CanonicalTemplate[] = [
       "Eddie Declet & Pedro Maldonado",
     ],
   },
+  {
+    name: "tournament_starting_pool",
+    category: "UTILITY",
+    language: "en",
+    body:
+      "🎾 ¡Empezamos {{1}}! Estás en Pool {{2}}.\n" +
+      "\n" +
+      "Tu horario:\n" +
+      "{{3}}\n" +
+      "\n" +
+      "Llega 5 minutos antes de tu partido. ¡Buena suerte!\n" +
+      "\n" +
+      "🎾 Tournament starting: {{1}}! You're in Pool {{2}}.\n" +
+      "\n" +
+      "Your schedule:\n" +
+      "{{3}}\n" +
+      "\n" +
+      "Arrive 5 minutes before your match. Good luck!",
+    bodyExamples: [
+      "Money Ball",
+      "A",
+      "R1 - Dylan Ralston & Jack Munro vs Eddie Declet & Pedro Maldonado · Court 1",
+    ],
+  },
+  {
+    name: "tournament_starting_first_match",
+    category: "UTILITY",
+    language: "en",
+    body:
+      "🎾 ¡Empezamos {{1}}! Estás en Pool {{2}}.\n" +
+      "🏁 Tu partido es el primero en {{3}}.\n" +
+      "\n" +
+      "Tu horario completo:\n" +
+      "{{4}}\n" +
+      "\n" +
+      "¡Buena suerte!\n" +
+      "\n" +
+      "🎾 Tournament starting: {{1}}! You're in Pool {{2}}.\n" +
+      "🏁 Your match is up first on {{3}}.\n" +
+      "\n" +
+      "Your full pool schedule:\n" +
+      "{{4}}\n" +
+      "\n" +
+      "Good luck!",
+    bodyExamples: [
+      "Money Ball",
+      "A",
+      "Court 1",
+      "R1 - Dylan Ralston & Jack Munro vs Eddie Declet & Pedro Maldonado · Court 1",
+    ],
+  },
 ];
 
 type ListedTemplate = {

@@ -1261,6 +1261,103 @@ export async function sendTournamentResultsEmail(args: ResultsEmailArgs): Promis
   return { id: data?.id ?? null };
 }
 
+type StartEmailArgs = {
+  toEmail: string;
+  toFirstName: string;
+  tournamentTitle: string;
+  poolLetter: string;
+  /** Multi-line schedule string, one match per line (already formatted). */
+  schedule: string;
+  isFirstMatch: boolean;
+  firstMatchCourtLabel: string | null;
+  tournamentUrl: string;
+  subjectPrefix?: string;
+};
+
+export async function sendTournamentStartEmail(args: StartEmailArgs): Promise<{ id: string | null }> {
+  const {
+    toEmail,
+    toFirstName,
+    tournamentTitle,
+    poolLetter,
+    schedule,
+    isFirstMatch,
+    firstMatchCourtLabel,
+    tournamentUrl,
+    subjectPrefix,
+  } = args;
+  const subject = `${subjectPrefix ?? ""}🎾 ¡Empieza ${tournamentTitle}! · Tournament starting`;
+  const scheduleHtml = escapeHtml(schedule).replace(/\n/g, "<br/>");
+
+  const firstMatchEs = isFirstMatch && firstMatchCourtLabel
+    ? `<p style="margin:6px 0 0;font-size:14px;color:#fbbf24;">🏁 Tu partido es el primero en ${escapeHtml(firstMatchCourtLabel)}.</p>`
+    : "";
+  const firstMatchEn = isFirstMatch && firstMatchCourtLabel
+    ? `<p style="margin:6px 0 0;font-size:14px;color:#fbbf24;">🏁 Your match is up first on ${escapeHtml(firstMatchCourtLabel)}.</p>`
+    : "";
+
+  const html = `<!doctype html>
+<html><head><meta charset="utf-8" /><meta name="format-detection" content="telephone=no, address=no, email=no" /><title>${escapeHtml(subject)}</title></head>
+<body style="margin:0;padding:0;background:#09090b;color:#fafafa;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#09090b;padding:24px 16px;">
+    <tr><td align="center">
+      <table role="presentation" width="560" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;width:100%;background:#18181b;border:1px solid #27272a;border-radius:16px;overflow:hidden;">
+        <tr><td style="padding:24px 28px 12px;">
+          <div style="font-size:18px;font-weight:700;letter-spacing:-0.5px;color:#fafafa;">Buen Tiro</div>
+          <div style="height:2px;width:36px;background:#10b981;border-radius:2px;margin-top:6px;"></div>
+        </td></tr>
+
+        <!-- ── Spanish ──────────────────────────────────────────── -->
+        <tr><td style="padding:0 28px 8px;">
+          <p style="margin:0 0 4px;font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#71717a;">${escapeHtml(tournamentTitle)}</p>
+          <h1 style="margin:0 0 6px;font-size:24px;line-height:1.2;color:#fafafa;font-weight:700;">¡Empezamos! Estás en Pool ${escapeHtml(poolLetter)}</h1>
+          <p style="margin:0;font-size:14px;color:#a1a1aa;">Hola ${escapeHtml(toFirstName)} — aquí está el horario de tu grupo:</p>
+          ${firstMatchEs}
+        </td></tr>
+        <tr><td style="padding:8px 28px 0;">
+          <div style="background:#09090b;border:1px solid #27272a;border-radius:12px;padding:14px 16px;font-size:13px;line-height:1.7;color:#e4e4e7;">${scheduleHtml}</div>
+        </td></tr>
+        <tr><td style="padding:8px 28px 16px;">
+          <p style="margin:0;font-size:12px;color:#71717a;">Llega 5 minutos antes de tu partido. ¡Buena suerte!</p>
+        </td></tr>
+
+        <!-- ── English ──────────────────────────────────────────── -->
+        <tr><td style="padding:0 28px 6px;border-top:1px solid #27272a;padding-top:18px;">
+          <h2 style="margin:0 0 6px;font-size:18px;line-height:1.25;color:#fafafa;font-weight:700;">Tournament starting · You're in Pool ${escapeHtml(poolLetter)}</h2>
+          <p style="margin:0;font-size:13px;color:#a1a1aa;">Hi ${escapeHtml(toFirstName)} — here's your pool schedule:</p>
+          ${firstMatchEn}
+        </td></tr>
+        <tr><td style="padding:8px 28px 0;">
+          <div style="background:#09090b;border:1px solid #27272a;border-radius:12px;padding:14px 16px;font-size:13px;line-height:1.7;color:#e4e4e7;">${scheduleHtml}</div>
+        </td></tr>
+        <tr><td style="padding:8px 28px 16px;">
+          <p style="margin:0;font-size:12px;color:#71717a;">Arrive 5 minutes before your match. Good luck!</p>
+        </td></tr>
+
+        <tr><td style="padding:6px 28px 16px;">
+          <a href="${tournamentUrl}" style="display:inline-block;background:#10b981;color:#ffffff;text-decoration:none;font-weight:600;font-size:14px;padding:11px 20px;border-radius:10px;">Ver el torneo / View tournament</a>
+        </td></tr>
+        <tr><td style="padding:6px 28px 24px;">
+          <p style="margin:0;font-size:11px;color:#71717a;">Buen Tiro Pickleball</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>`;
+
+  const { data, error } = await resend().emails.send({
+    from: FROM,
+    to: toEmail,
+    subject,
+    html,
+  });
+  if (error) {
+    console.error("Resend send error (tournament start):", error, "to:", toEmail);
+    return { id: null };
+  }
+  return { id: data?.id ?? null };
+}
+
 function escapeHtml(s: string): string {
   return s
     .replace(/&/g, "&amp;")
