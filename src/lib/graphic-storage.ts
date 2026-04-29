@@ -26,7 +26,6 @@ export type RasterizeAndUploadArgs = {
 export async function rasterizeAndUpload(args: RasterizeAndUploadArgs): Promise<{
   pngUrl: string;
   pngPath: string;
-  svgPath: string;
 }> {
   const { admin, tournamentId, type, svg } = args;
 
@@ -39,20 +38,16 @@ export async function rasterizeAndUpload(args: RasterizeAndUploadArgs): Promise<
     .png()
     .toBuffer();
 
+  // Only PNG goes to Storage; the SVG source lives in the DB row's
+  // `svg` column (the bucket's image/* mime filter rejects svg+xml).
   const ts = Date.now();
   const pngPath = `graphics/${tournamentId}/${type}/${ts}.png`;
-  const svgPath = `graphics/${tournamentId}/${type}/${ts}.svg`;
 
   const { error: pngErr } = await admin.storage
     .from(BUCKET)
     .upload(pngPath, png, { contentType: "image/png", upsert: false });
   if (pngErr) throw new Error(`storage upload (png): ${pngErr.message}`);
 
-  const { error: svgErr } = await admin.storage
-    .from(BUCKET)
-    .upload(svgPath, svg, { contentType: "image/svg+xml", upsert: false });
-  if (svgErr) throw new Error(`storage upload (svg): ${svgErr.message}`);
-
   const { data: urlData } = admin.storage.from(BUCKET).getPublicUrl(pngPath);
-  return { pngUrl: urlData.publicUrl, pngPath, svgPath };
+  return { pngUrl: urlData.publicUrl, pngPath };
 }
