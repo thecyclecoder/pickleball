@@ -18,21 +18,18 @@ const W = 1080;
 const H = 1350;
 
 /**
- * Inter font file paths. resvg-js takes filesystem paths and loads
- * them itself; this skips libvips's font-rendering path which on
- * Vercel's Lambda has no fallback for sans-serif and produces tofu
- * boxes. Files come from @fontsource/inter installed in node_modules.
+ * Inter Variable TTF (876KB) committed under src/lib/fonts. resvg-js
+ * silently rejects woff2 from `fontFiles` so we have to ship a real
+ * TTF; one variable file covers every weight we need (400 + 700+).
+ *
+ * The path resolves via __dirname for consistency between local dev
+ * and Vercel's Lambda (process.cwd() is reliable on Vercel but the
+ * file lives next to this module). Next's deployment tracer includes
+ * files referenced via static-ish fs.readFileSync paths within the
+ * package, so the font ships with the API route.
  */
-const FONT_DIR = path.join(
-  process.cwd(),
-  "node_modules",
-  "@fontsource",
-  "inter",
-  "files"
-);
 const FONT_FILES = [
-  path.join(FONT_DIR, "inter-latin-400-normal.woff2"),
-  path.join(FONT_DIR, "inter-latin-700-normal.woff2"),
+  path.join(process.cwd(), "src", "lib", "fonts", "Inter-VariableFont.ttf"),
 ].filter((p) => {
   try {
     return fs.statSync(p).isFile();
@@ -279,6 +276,7 @@ export async function compositeOverTemplate(args: {
     font: {
       fontFiles: FONT_FILES,
       defaultFontFamily: "Inter",
+      sansSerifFamily: "Inter",
       loadSystemFonts: false,
     },
   });
