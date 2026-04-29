@@ -40,22 +40,26 @@ type GenerateArgs = {
   feedbackHistory?: FeedbackEntry[];
 };
 
-const BASE_SYSTEM_PROMPT = `You generate Instagram-format SVG graphics (1080×1350, 4:5) for pickleball tournament announcements.
+const BASE_SYSTEM_PROMPT = `You generate Instagram-format SVG OVERLAYS (1080×1350, 4:5) for pickleball tournament announcements.
+
+CRITICAL — how the SVG gets rendered:
+- The reference image you're shown is the BACKDROP. The server composites it UNDER your SVG before rasterizing — you do NOT include it in the SVG. Do NOT use <image> elements. Do NOT reference any external URL. The reference image is for inspiration only (color palette, mood, vibe).
+- The server applies a translucent dark overlay between the backdrop and your SVG so text is readable. You do NOT need to add a darkening rect — just design as if the canvas already has a dark, slightly-muted-by-default backdrop.
+- Your SVG background MUST be transparent (do not fill the full canvas with a solid rect). Use shapes, lines, and text only. Empty space is fine — the backdrop shows through.
 
 OUTPUT RULES — non-negotiable:
 - Output ONLY valid SVG. No markdown fences, no preamble, no explanation.
-- Root <svg> element MUST have width="1080" height="1350" and viewBox="0 0 1080 1350".
-- Embed the provided reference image as a backdrop via <image> with href set to the EXACT URL provided. Use preserveAspectRatio="xMidYMid slice" so it fills the canvas.
-- Apply a darkening linear-gradient or semi-transparent overlay rectangle so any text is readable against the image.
-- Include a "BUEN TIRO PICKLEBALL" brand strip — small caps, modern, near the top.
-- Use a polished, modern, bold typography style. Sans-serif. White text against the darkened backdrop. Emerald (#10b981) accents are encouraged but optional.
-- Composition should look INTENTIONAL — clear hierarchy, generous whitespace, strong focal point.
+- Root <svg> element MUST have width="1080" height="1350" and viewBox="0 0 1080 1350" and xmlns="http://www.w3.org/2000/svg".
+- Use ONLY generic font families: font-family="sans-serif" or font-family="serif". Never reference named fonts (no Inter, no Helvetica, no system-ui — those don't exist on the rendering server and turn into tofu boxes).
+- White or near-white text for primary content. Emerald (#10b981) and amber (#fbbf24) are good accent colors. Pull additional accent colors from the reference image if it suggests a clear palette.
+- Include a "BUEN TIRO PICKLEBALL" brand strip — small caps, sans-serif, near the top or bottom edge.
 
 DESIGN RULES:
-- The "base" template is a VISUAL SHELL: the design language for this tournament. It should have a prominent headline placeholder that says exactly the tournament title given, then an empty content region beneath where future application data will live. Make the empty region clearly framed — a subtle box, divider, or column — so we can see WHERE pool results / bracket / final results will eventually go.
-- Do NOT use Mustache placeholders or {{tokens}} — render real, final content. The base template's "real content" is just the tournament title plus a placeholder caption like "Match results · Bracket · Final standings".
+- The "base" template is a VISUAL SHELL: the design language for this tournament. It should have a prominent headline that says exactly the tournament title given, then a clearly-framed empty content region beneath where future per-event data will live (pool results, bracket, finals). The empty region should be visibly marked — a subtle box, dotted column dividers, or labeled placeholders saying "Pool A · Pool B · Pool C · Pool D" or "Quarterfinals → Semifinals → Final".
+- Do NOT use Mustache placeholders or {{tokens}} — render real, final content. The base template's real content is the tournament title + a structural caption like "Pools · Bracket · Final standings" plus the empty content region.
+- Composition should look INTENTIONAL — clear hierarchy, generous whitespace, strong focal point.
 
-The SVG you output gets rasterized to PNG by Sharp, so use only standard SVG features that rasterize reliably (no <foreignObject>, no animations).`;
+Use only standard SVG features that rasterize reliably under librsvg (no <foreignObject>, no animations, no filters that depend on external resources).`;
 
 function buildUserPrompt(args: GenerateArgs): string {
   const { type, tournamentTitle, referenceImageUrl, priorSvg, feedback, feedbackHistory } = args;

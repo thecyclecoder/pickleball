@@ -114,6 +114,7 @@ export async function POST(
       tournamentId: id,
       type: graphicType,
       svg,
+      referenceImageUrl,
     });
     pngUrl = uploaded.pngUrl;
   } catch (e) {
