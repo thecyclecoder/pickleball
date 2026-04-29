@@ -8,7 +8,12 @@ import { TournamentForm } from "../tournament-form";
 import { RegistrationsPanel } from "./registrations-panel";
 import { DangerZone } from "./danger-zone";
 import { SendResultsButton } from "./send-results-button";
-import { GraphicsPanel, type GraphicRow } from "./graphics-panel";
+import {
+  GraphicsPanel,
+  type GraphicRow,
+  type PoolForGraphics,
+  type CategoryForGraphics,
+} from "./graphics-panel";
 import type {
   Tournament,
   TournamentCategory,
@@ -84,11 +89,28 @@ export default async function AdminTournamentEditPage({
 
   const { data: graphicRows } = await admin
     .from("tournament_graphics")
-    .select("id, type, svg, png_url, approved, feedback_history, updated_at")
+    .select("id, type, target_key, svg, png_url, approved, updated_at")
     .eq("tournament_id", id);
   const graphics = (graphicRows ?? []) as GraphicRow[];
-  const hasReferenceImage =
-    (tournament.images && tournament.images.length > 0) || !!tournament.flyer_image_url;
+
+  const sortedCategoriesForGraphics = tournament.categories
+    .slice()
+    .sort((a, b) => a.sort_order - b.sort_order || a.type.localeCompare(b.type));
+  const categoriesForGraphics: CategoryForGraphics[] = sortedCategoriesForGraphics.map(
+    (c) => ({ id: c.id, display: categoryLabel(c) })
+  );
+  const poolsForGraphics: PoolForGraphics[] = sortedCategoriesForGraphics.flatMap(
+    (c) =>
+      (c.pools ?? [])
+        .slice()
+        .sort((a, b) => a.sort_order - b.sort_order)
+        .map((p) => ({
+          id: p.id,
+          letter: p.letter,
+          category_id: c.id,
+          categoryDisplay: categoryLabel(c),
+        }))
+  );
 
   const sortedCourts = [...tournament.courts].sort(
     (a, b) => a.sort_order - b.sort_order || a.number - b.number
@@ -195,7 +217,8 @@ export default async function AdminTournamentEditPage({
         <GraphicsPanel
           tournamentId={tournament.id}
           graphics={graphics}
-          hasReferenceImage={hasReferenceImage}
+          pools={poolsForGraphics}
+          categories={categoriesForGraphics}
         />
       </div>
 
