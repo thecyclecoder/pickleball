@@ -64,7 +64,7 @@ export function RegistrationsPanel({
 
   const totalActive = teams.filter((t) => t.status !== "cancelled").length;
   return (
-    <details open className="group rounded-xl border border-zinc-800 bg-zinc-900">
+    <details className="group rounded-xl border border-zinc-800 bg-zinc-900">
       <summary className="flex cursor-pointer list-none items-center justify-between border-zinc-800 px-5 py-3 group-open:border-b [&::-webkit-details-marker]:hidden">
         <h2 className="text-sm font-semibold text-white">
           Registrations

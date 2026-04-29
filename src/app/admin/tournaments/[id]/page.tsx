@@ -7,6 +7,7 @@ import { categoryLabel } from "@/lib/categories";
 import { TournamentForm } from "../tournament-form";
 import { RegistrationsPanel } from "./registrations-panel";
 import { DangerZone } from "./danger-zone";
+import { SendResultsButton } from "./send-results-button";
 import type {
   Tournament,
   TournamentCategory,
@@ -172,6 +173,14 @@ export default async function AdminTournamentEditPage({
           />
         </div>
       )}
+
+      <div className="mt-8">
+        <SendResultsButton
+          tournamentId={tournament.id}
+          tournamentTitle={tournament.title}
+          sandboxMode={tournament.sandbox_mode ?? false}
+        />
+      </div>
 
       <details className="group mt-8">
         <summary className="flex cursor-pointer list-none items-center justify-between rounded-lg px-1 py-1 hover:bg-zinc-900/40 [&::-webkit-details-marker]:hidden">

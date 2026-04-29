@@ -1161,6 +1161,106 @@ Full schedule: ${tournamentUrl}
   return { id: data?.id ?? null };
 }
 
+type CategoryResult = {
+  display: string;
+  winnerLabel: string | null;
+  runnerUpLabel: string | null;
+  /** Semifinalist team labels (3rd–4th by traditional ranking — both
+   *  treated equal since there's no 3rd-place playoff). */
+  semifinalistLabels: string[];
+};
+
+type ResultsEmailArgs = {
+  toEmail: string;
+  toFirstName: string;
+  tournamentTitle: string;
+  whenWhereLine: string;
+  /** Public tournament page URL */
+  tournamentUrl: string;
+  categories: CategoryResult[];
+  /** "[SANDBOX] " prefix added when called from sandbox flow. */
+  subjectPrefix?: string;
+};
+
+export async function sendTournamentResultsEmail(args: ResultsEmailArgs): Promise<{ id: string | null }> {
+  const {
+    toEmail,
+    toFirstName,
+    tournamentTitle,
+    whenWhereLine,
+    tournamentUrl,
+    categories,
+    subjectPrefix,
+  } = args;
+
+  const subject = `${subjectPrefix ?? ""}🏆 ${tournamentTitle} — Resultados / Results`;
+
+  const renderCategory = (c: CategoryResult): string => {
+    const winnerRow = c.winnerLabel
+      ? `<tr><td style="padding:6px 0;font-size:14px;color:#fafafa;"><span style="font-size:16px;">🥇</span> <strong>${escapeHtml(c.winnerLabel)}</strong> <span style="color:#71717a;font-size:12px;">— Campeones / Champions</span></td></tr>`
+      : "";
+    const runnerUpRow = c.runnerUpLabel
+      ? `<tr><td style="padding:6px 0;font-size:14px;color:#d4d4d8;"><span style="font-size:16px;">🥈</span> ${escapeHtml(c.runnerUpLabel)} <span style="color:#71717a;font-size:12px;">— Subcampeones / Runner-up</span></td></tr>`
+      : "";
+    const sfRows = c.semifinalistLabels.length
+      ? `<tr><td style="padding:6px 0;font-size:13px;color:#a1a1aa;"><span style="font-size:14px;">🥉</span> ${c.semifinalistLabels.map((l) => escapeHtml(l)).join(" · ")} <span style="color:#71717a;font-size:12px;">— Semifinalistas / Semifinalists</span></td></tr>`
+      : "";
+    return `<tr><td style="padding:14px 0 6px;">
+      <p style="margin:0 0 6px;font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#10b981;">${escapeHtml(c.display)}</p>
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+        ${winnerRow}${runnerUpRow}${sfRows}
+      </table>
+    </td></tr>`;
+  };
+
+  const categoryRows = categories.length
+    ? categories.map(renderCategory).join("")
+    : `<tr><td style="padding:14px 0;font-size:13px;color:#a1a1aa;">Resultados no disponibles aún. / Results not yet available.</td></tr>`;
+
+  const html = `<!doctype html>
+<html><head><meta charset="utf-8" /><meta name="format-detection" content="telephone=no, address=no, email=no" /><title>${escapeHtml(subject)}</title></head>
+<body style="margin:0;padding:0;background:#09090b;color:#fafafa;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#09090b;padding:24px 16px;">
+    <tr><td align="center">
+      <table role="presentation" width="560" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;width:100%;background:#18181b;border:1px solid #27272a;border-radius:16px;overflow:hidden;">
+        <tr><td style="padding:24px 28px 12px;">
+          <div style="font-size:18px;font-weight:700;letter-spacing:-0.5px;color:#fafafa;">Buen Tiro</div>
+          <div style="height:2px;width:36px;background:#10b981;border-radius:2px;margin-top:6px;"></div>
+        </td></tr>
+        <tr><td style="padding:0 28px 8px;">
+          <p style="margin:0 0 4px;font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#71717a;">${escapeHtml(whenWhereLine)}</p>
+          <h1 style="margin:0 0 6px;font-size:26px;line-height:1.2;color:#fafafa;font-weight:700;">${escapeHtml(tournamentTitle)}</h1>
+          <p style="margin:0 0 14px;font-size:13px;color:#a1a1aa;">¡Gracias por jugar, ${escapeHtml(toFirstName)}! Aquí están los resultados.<br/>Thanks for playing — here are the final results.</p>
+        </td></tr>
+        <tr><td style="padding:0 28px 4px;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+            ${categoryRows}
+          </table>
+        </td></tr>
+        <tr><td style="padding:16px 28px 8px;">
+          <a href="${tournamentUrl}" style="display:inline-block;background:#10b981;color:#ffffff;text-decoration:none;font-weight:600;font-size:14px;padding:11px 20px;border-radius:10px;">Ver bracket completo / View full bracket</a>
+        </td></tr>
+        <tr><td style="padding:14px 28px 24px;">
+          <p style="margin:0;font-size:12px;color:#71717a;line-height:1.55;">¡Nos vemos en el próximo torneo! / See you at the next one!</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>`;
+
+  const { data, error } = await resend().emails.send({
+    from: FROM,
+    to: toEmail,
+    subject,
+    html,
+  });
+  if (error) {
+    console.error("Resend send error (results):", error, "to:", toEmail);
+    return { id: null };
+  }
+  return { id: data?.id ?? null };
+}
+
 function escapeHtml(s: string): string {
   return s
     .replace(/&/g, "&amp;")

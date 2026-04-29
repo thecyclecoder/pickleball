@@ -1,19 +1,28 @@
 /**
  * Score-update notifications: fire WhatsApp `match_score_update` to the
  * players involved in a match. Sandbox-aware: when the tournament has
- * sandbox_mode=true, recipients are redirected to workspace owners +
- * admins (whose phones are looked up from any player record matching
- * their email) and the tournament name is prefixed with [SANDBOX] so
- * the recipient can see at a glance the message is a dry run.
+ * sandbox_mode=true, recipients are redirected to the workspace owner
+ * only (phone looked up via any player record matching the owner email)
+ * and the tournament name is prefixed with [SANDBOX].
  *
- * The hook is fire-and-await but never throws — score saves shouldn't
- * fail because WhatsApp is down. Outcomes are returned to the caller
- * for logging.
+ * Failures don't throw — score saves shouldn't fail because WhatsApp
+ * is down. Outcomes returned for logging.
  *
- * Template body (already approved):
- *   The score for your match has been recorded for {{1}}. Your team
- *   {{2}} played against {{3}}. Final result: {{4}} to {{5}}. View the
- *   updated standings on Buen Tiro.
+ * Bilingual neutral framing — same content for both teams' players (no
+ * per-recipient "your team" personalization), Spanish first then
+ * English. Template params:
+ *   {{1}} tournament title
+ *   {{2}} team A label
+ *   {{3}} team A score
+ *   {{4}} team B score
+ *   {{5}} team B label
+ *
+ * Suggested template body (submit at Meta):
+ *   ✅ Resultado registrado para {{1}}: {{2}} {{3}} - {{4}} {{5}}.
+ *   Mira la tabla actualizada en Buen Tiro.
+ *
+ *   ✅ Score recorded for {{1}}: {{2}} {{3}} - {{4}} {{5}}.
+ *   View the updated standings on Buen Tiro.
  */
 
 import { sendTemplate } from "./whatsapp";
@@ -46,9 +55,7 @@ const TEMPLATE_NAME = "match_score_update";
 
 function teamLabel(players: MinimalPlayer[]): string {
   if (players.length === 0) return "Team";
-  return players
-    .map((p) => `${p.first_name} ${p.last_name.slice(0, 1)}.`)
-    .join(" / ");
+  return players.map((p) => `${p.first_name} ${p.last_name}`).join(" & ");
 }
 
 export async function notifyMatchScore(args: Args): Promise<ScoreNotifyOutcome> {
@@ -56,82 +63,50 @@ export async function notifyMatchScore(args: Args): Promise<ScoreNotifyOutcome> 
   const aLabel = teamLabel(teamA.players);
   const bLabel = teamLabel(teamB.players);
 
-  // Build the recipient list. Each entry carries the params from the
-  // perspective of the recipient (team-A players see their team first
-  // in the body, team-B players see theirs first).
-  type Recipient = { phone: string; params: string[] };
-  const recipients: Recipient[] = [];
-
   const titleForBody = tournament.sandbox_mode
     ? `[SANDBOX] ${tournament.title}`
     : tournament.title;
+  const params = [titleForBody, aLabel, String(scoreA), String(scoreB), bLabel];
+
+  // Recipient list: neutral message goes to every player phone in both
+  // teams (live) or just the workspace owner (sandbox). Same content for
+  // everyone — no per-team personalization.
+  const phones: string[] = [];
+  const seen = new Set<string>();
 
   if (tournament.sandbox_mode) {
-    // Redirect to workspace owners + admins. Pull their phones from
-    // any player record matching their member email (lower-cased).
     const { data: members } = await admin
       .from("workspace_members")
-      .select("email, role")
+      .select("email")
       .eq("workspace_id", tournament.workspace_id)
-      .in("role", ["owner", "admin"]);
+      .eq("role", "owner");
     const memberEmails = (members ?? [])
       .map((m) => (m.email as string).toLowerCase())
       .filter(Boolean);
-
     if (memberEmails.length === 0) {
       return { attempted: 0, delivered: 0, failures: [], sandbox: true };
     }
-
     const { data: matchedPlayers } = await admin
       .from("players")
-      .select("email, phone")
+      .select("phone")
       .in("email", memberEmails)
       .not("phone", "is", null);
-
-    const seen = new Set<string>();
     for (const row of matchedPlayers ?? []) {
       const phone = (row.phone as string | null)?.trim();
-      if (!phone) continue;
-      if (seen.has(phone)) continue;
+      if (!phone || seen.has(phone)) continue;
       seen.add(phone);
-      // Sandbox messages always go from team-A perspective — admins
-      // aren't on either team, so the per-side personalization is moot.
-      recipients.push({
-        phone,
-        params: [titleForBody, aLabel, bLabel, String(scoreA), String(scoreB)],
-      });
+      phones.push(phone);
     }
   } else {
-    const seen = new Set<string>();
-    const push = (
-      players: MinimalPlayer[],
-      myLabel: string,
-      theirLabel: string,
-      myScore: number,
-      theirScore: number
-    ) => {
-      for (const p of players) {
-        const phone = p.phone?.trim();
-        if (!phone) continue;
-        if (seen.has(phone)) continue;
-        seen.add(phone);
-        recipients.push({
-          phone,
-          params: [
-            titleForBody,
-            myLabel,
-            theirLabel,
-            String(myScore),
-            String(theirScore),
-          ],
-        });
-      }
-    };
-    push(teamA.players, aLabel, bLabel, scoreA, scoreB);
-    push(teamB.players, bLabel, aLabel, scoreB, scoreA);
+    for (const p of [...teamA.players, ...teamB.players]) {
+      const phone = p.phone?.trim();
+      if (!phone || seen.has(phone)) continue;
+      seen.add(phone);
+      phones.push(phone);
+    }
   }
 
-  if (recipients.length === 0) {
+  if (phones.length === 0) {
     return {
       attempted: 0,
       delivered: 0,
@@ -141,13 +116,13 @@ export async function notifyMatchScore(args: Args): Promise<ScoreNotifyOutcome> 
   }
 
   const results = await Promise.all(
-    recipients.map(async (r) => {
+    phones.map(async (phone) => {
       const result = await sendTemplate({
-        to: r.phone,
+        to: phone,
         template: TEMPLATE_NAME,
-        bodyParams: r.params,
+        bodyParams: params,
       });
-      return { phone: r.phone, result };
+      return { phone, result };
     })
   );
 
@@ -159,8 +134,8 @@ export async function notifyMatchScore(args: Args): Promise<ScoreNotifyOutcome> 
     }));
 
   return {
-    attempted: recipients.length,
-    delivered: recipients.length - failures.length,
+    attempted: phones.length,
+    delivered: phones.length - failures.length,
     failures,
     sandbox: tournament.sandbox_mode,
   };

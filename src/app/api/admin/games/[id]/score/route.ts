@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { requireMember } from "@/lib/api";
 import { rulesForStage, validateGameScore } from "@/lib/score-validate";
 import { notifyMatchScore } from "@/lib/notify-score";
+import { notifyNextMatchOnCourt } from "@/lib/notify-next-match";
 import { nextBracketSlot } from "@/lib/bracket-seed";
 import type { GameStage } from "@/lib/types";
 
@@ -10,6 +11,7 @@ type GameRow = {
   id: string;
   category_id: string;
   pool_id: string | null;
+  court_id: string | null;
   stage: GameStage;
   sort_order: number;
   team_a_id: string | null;
@@ -39,7 +41,7 @@ async function loadGame(
   const { data, error } = await admin
     .from("games")
     .select(
-      `id, category_id, pool_id, stage, sort_order, team_a_id, team_b_id, score_a, score_b, status,
+      `id, category_id, pool_id, court_id, stage, sort_order, team_a_id, team_b_id, score_a, score_b, status,
        category:tournament_categories!inner (
          id, tournament_id, format_id,
          tournament:tournaments!inner ( id, title, workspace_id, sandbox_mode ),
@@ -182,7 +184,35 @@ export async function POST(
     console.error("[score] notify failed:", e);
   }
 
-  return NextResponse.json({ game: updated, notify });
+  // Pool-only: ping the next game's players on the same court that
+  // their match is up. Bracket games skip this (different cadence).
+  let nextMatchNotify: Awaited<ReturnType<typeof notifyNextMatchOnCourt>> | null = null;
+  if (game.stage === "pool") {
+    try {
+      const tournament = game.category?.tournament;
+      if (tournament) {
+        nextMatchNotify = await notifyNextMatchOnCourt({
+          admin,
+          tournament: {
+            id: tournament.id,
+            title: tournament.title,
+            workspace_id: tournament.workspace_id,
+            sandbox_mode: tournament.sandbox_mode,
+          },
+          finishedGame: {
+            id: game.id,
+            category_id: game.category_id,
+            court_id: game.court_id ?? null,
+            stage: game.stage,
+          },
+        });
+      }
+    } catch (e) {
+      console.error("[score] next-match notify failed:", e);
+    }
+  }
+
+  return NextResponse.json({ game: updated, notify, nextMatchNotify });
 }
 
 /**
