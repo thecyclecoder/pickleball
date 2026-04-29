@@ -9,7 +9,7 @@
 // Bump CACHE_NAME when STATIC_ASSETS changes so stale entries get
 // purged on the next activate.
 
-const CACHE_NAME = "buentiro-v2";
+const CACHE_NAME = "buentiro-v3";
 const STATIC_ASSETS = ["/manifest.json", "/icon-192.png", "/icon-512.png"];
 
 self.addEventListener("install", (event) => {
@@ -26,24 +26,19 @@ self.addEventListener("activate", (event) => {
   self.clients.claim();
 });
 
+// Only intercept fetches for the small pre-cached static set. Everything
+// else — pages, JS bundles, images, prefetches, API calls — goes straight
+// to the network without SW indirection, so deploy errors and offline
+// edge cases can't manifest as "Failed to convert value to 'Response'".
 self.addEventListener("fetch", (event) => {
   const { request } = event;
-  const url = new URL(request.url);
-
-  // Never intercept auth, API, admin, login, or cross-origin
-  const bypass = ["/auth/", "/api/", "/login", "/admin", "supabase.co"];
-  if (bypass.some((p) => url.pathname.includes(p) || url.href.includes(p))) return;
   if (request.method !== "GET") return;
+  const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
+  if (!STATIC_ASSETS.includes(url.pathname)) return;
 
-  // HTML always goes to the network. No stale pages after a UI deploy.
-  const accept = request.headers.get("accept") || "";
-  if (request.mode === "navigate" || accept.includes("text/html")) return;
-
-  // Cache-first for the handful of pre-cached assets; otherwise go to
-  // the network and fall back to cache only if offline.
   event.respondWith(
-    caches.match(request).then((cached) => cached || fetch(request).catch(() => cached))
+    caches.match(request).then((cached) => cached || fetch(request))
   );
 });
 
