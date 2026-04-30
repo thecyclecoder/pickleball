@@ -16,9 +16,13 @@ export type ClinicCheckInRow = {
 export function ClinicCheckInList({
   clinicId,
   initialRows,
+  paymentQrUrl,
+  paymentInstructions,
 }: {
   clinicId: string;
   initialRows: ClinicCheckInRow[];
+  paymentQrUrl: string | null;
+  paymentInstructions: string | null;
 }) {
   const [search, setSearch] = useState("");
   const [openId, setOpenId] = useState<string | null>(null);
@@ -109,6 +113,8 @@ export function ClinicCheckInList({
         <ClinicDrawer
           clinicId={clinicId}
           row={open}
+          paymentQrUrl={paymentQrUrl}
+          paymentInstructions={paymentInstructions}
           onClose={() => setOpenId(null)}
           onUpdated={(updated) => {
             setRows((prev) => prev.map((r) => (r.id === updated.id ? updated : r)));
@@ -123,18 +129,42 @@ export function ClinicCheckInList({
 function ClinicDrawer({
   clinicId,
   row,
+  paymentQrUrl,
+  paymentInstructions,
   onClose,
   onUpdated,
 }: {
   clinicId: string;
   row: ClinicCheckInRow;
+  paymentQrUrl: string | null;
+  paymentInstructions: string | null;
   onClose: () => void;
   onUpdated: (r: ClinicCheckInRow) => void;
 }) {
   const [phone, setPhone] = useState(row.phone ?? "");
-  const [busy, setBusy] = useState<"in" | "out" | null>(null);
+  const [paid, setPaid] = useState(row.paid);
+  const [busy, setBusy] = useState<"in" | "out" | "pay" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
+
+  async function markPaid() {
+    setError(null);
+    setBusy("pay");
+    const res = await fetch(`/api/admin/clinic-registrations/${row.id}/paid`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ paid: true }),
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setError(data.error || "Mark paid failed");
+      setBusy(null);
+      return;
+    }
+    setPaid(true);
+    onUpdated({ ...row, paid: true });
+    setBusy(null);
+  }
 
   async function checkIn() {
     setError(null);
@@ -214,7 +244,7 @@ function ClinicDrawer({
           <div>
             <dt className="text-[10px] uppercase tracking-wider text-zinc-500">Payment</dt>
             <dd className="mt-0.5">
-              {row.paid ? (
+              {paid ? (
                 <span className="text-emerald-400">Paid</span>
               ) : (
                 <span className="text-amber-400">Unpaid</span>
@@ -233,6 +263,44 @@ function ClinicDrawer({
           </div>
         </dl>
 
+        {!paid && paymentQrUrl && (
+          <div className="mb-4 rounded-lg border border-amber-900/60 bg-amber-950/20 p-3">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-amber-300">
+              Unpaid — show this to the player
+            </p>
+            {paymentInstructions && (
+              <p className="mt-1 whitespace-pre-wrap text-xs text-amber-100/80">
+                {paymentInstructions}
+              </p>
+            )}
+            <div className="mt-2 overflow-hidden rounded-md border border-zinc-800 bg-white">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={paymentQrUrl} alt="Payment QR" className="block h-auto w-full" />
+            </div>
+            <button
+              type="button"
+              onClick={markPaid}
+              disabled={busy !== null}
+              className="mt-3 w-full rounded-md border border-emerald-700 bg-emerald-950/40 px-3 py-2 text-xs font-medium text-emerald-200 hover:bg-emerald-950/60 disabled:opacity-50"
+            >
+              {busy === "pay" ? "Marking paid…" : "Mark as paid"}
+            </button>
+          </div>
+        )}
+        {!paid && !paymentQrUrl && (
+          <div className="mb-4 rounded-lg border border-amber-900/60 bg-amber-950/20 px-3 py-2 text-xs text-amber-200">
+            Registration is unpaid. Set a payment QR on the clinic (or workspace) to
+            show it here, or just collect manually.
+            <button
+              type="button"
+              onClick={markPaid}
+              disabled={busy !== null}
+              className="mt-2 block w-full rounded-md border border-emerald-700 bg-emerald-950/40 px-3 py-2 font-medium text-emerald-200 hover:bg-emerald-950/60 disabled:opacity-50"
+            >
+              {busy === "pay" ? "Marking paid…" : "Mark as paid"}
+            </button>
+          </div>
+        )}
         {!checkedIn && (
           <div className="mb-4">
             <label className="block text-[10px] font-semibold uppercase tracking-wider text-zinc-500">

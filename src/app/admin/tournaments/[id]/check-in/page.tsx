@@ -10,6 +10,7 @@ import type {
   TournamentPool,
   Team,
   Player,
+  Workspace,
 } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -29,7 +30,8 @@ export default async function CheckInPage({
     .select(
       `*,
        categories:tournament_categories ( *, pools:tournament_pools (*) ),
-       teams ( *, players (*) )`
+       teams ( *, players (*) ),
+       workspace:workspaces ( payment_info )`
     )
     .eq("id", id)
     .eq("workspace_id", res.member.workspace_id)
@@ -39,7 +41,18 @@ export default async function CheckInPage({
   const tour = data as Tournament & {
     categories: (TournamentCategory & { pools: TournamentPool[] })[];
     teams: (Team & { players: Player[] })[];
+    workspace: Pick<Workspace, "payment_info"> | null;
   };
+
+  // Payment QR + instructions: tournament-level wins; fall back to
+  // workspace defaults so clubs that set venmo/ATH once don't have to
+  // re-paste it for every tournament.
+  const paymentQrUrl =
+    tour.payment_qr_url ||
+    tour.workspace?.payment_info?.venmo_qr_url ||
+    tour.workspace?.payment_info?.ath_qr_url ||
+    null;
+  const paymentInstructions = tour.payment_instructions ?? null;
 
   // Build lookups
   const categoriesById = new Map(tour.categories.map((c) => [c.id, c]));
@@ -95,7 +108,12 @@ export default async function CheckInPage({
           (sandbox redirects to you).
         </p>
       </div>
-      <CheckInList tournamentId={id} initialPlayers={players} />
+      <CheckInList
+        tournamentId={id}
+        initialPlayers={players}
+        paymentQrUrl={paymentQrUrl}
+        paymentInstructions={paymentInstructions}
+      />
     </div>
   );
 }

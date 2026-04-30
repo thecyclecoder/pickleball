@@ -57,7 +57,7 @@ export async function sendTemplate(opts: {
     type: "template",
     template: {
       name: opts.template,
-      language: { code: opts.language ?? "en" },
+      language: { code: opts.language ?? "en_US" },
       components,
     },
   };

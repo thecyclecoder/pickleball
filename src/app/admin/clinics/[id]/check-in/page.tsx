@@ -19,12 +19,27 @@ export default async function ClinicCheckInPage({
 
   const { data } = await admin
     .from("clinics")
-    .select("id, title, workspace_id")
+    .select(
+      `id, title, workspace_id, payment_qr_url, payment_instructions,
+       workspace:workspaces ( payment_info )`
+    )
     .eq("id", id)
     .eq("workspace_id", res.member.workspace_id)
     .maybeSingle();
   if (!data) notFound();
-  const clinic = data as Pick<Clinic, "id" | "title">;
+  const clinic = data as unknown as Pick<
+    Clinic,
+    "id" | "title" | "payment_qr_url" | "payment_instructions"
+  > & {
+    workspace: { payment_info: { venmo_qr_url?: string; ath_qr_url?: string } } | null;
+  };
+
+  const paymentQrUrl =
+    clinic.payment_qr_url ||
+    clinic.workspace?.payment_info?.venmo_qr_url ||
+    clinic.workspace?.payment_info?.ath_qr_url ||
+    null;
+  const paymentInstructions = clinic.payment_instructions ?? null;
 
   const { data: regs } = await admin
     .from("clinic_registrations")
@@ -57,7 +72,12 @@ export default async function ClinicCheckInPage({
           file.
         </p>
       </div>
-      <ClinicCheckInList clinicId={id} initialRows={rows} />
+      <ClinicCheckInList
+        clinicId={id}
+        initialRows={rows}
+        paymentQrUrl={paymentQrUrl}
+        paymentInstructions={paymentInstructions}
+      />
     </div>
   );
 }

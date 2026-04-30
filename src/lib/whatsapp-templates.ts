@@ -36,7 +36,7 @@ export const CANONICAL_TEMPLATES: CanonicalTemplate[] = [
   {
     name: "match_starting",
     category: "UTILITY",
-    language: "en",
+    language: "en_US",
     body:
       "🎾 Es tu turno en {{1}}. Tienes 5 minutos para calentar y luego comienza tu partido.\n" +
       "{{2}}\n" +
@@ -51,7 +51,7 @@ export const CANONICAL_TEMPLATES: CanonicalTemplate[] = [
   {
     name: "match_score_update",
     category: "UTILITY",
-    language: "en",
+    language: "en_US",
     body:
       "✅ Resultado registrado para {{1}}: {{2}} {{3}} - {{4}} {{5}}.\n" +
       "Mira la tabla actualizada en Buen Tiro.\n" +
@@ -69,7 +69,7 @@ export const CANONICAL_TEMPLATES: CanonicalTemplate[] = [
   {
     name: "tournament_starting_pool",
     category: "UTILITY",
-    language: "en",
+    language: "en_US",
     body:
       "🎾 ¡Empezamos {{1}}! Estás en Pool {{2}}.\n" +
       "\n" +
@@ -93,7 +93,7 @@ export const CANONICAL_TEMPLATES: CanonicalTemplate[] = [
   {
     name: "clinic_check_in",
     category: "UTILITY",
-    language: "en",
+    language: "en_US",
     body:
       "✅ ¡Estás registrado para {{1}}!\n" +
       "\n" +
@@ -103,7 +103,7 @@ export const CANONICAL_TEMPLATES: CanonicalTemplate[] = [
   {
     name: "tournament_check_in",
     category: "UTILITY",
-    language: "en",
+    language: "en_US",
     body:
       "✅ ¡Estás registrado en {{1}}! Estás en Pool {{2}} con tu compañero {{3}}.\n" +
       "\n" +
@@ -126,7 +126,7 @@ export const CANONICAL_TEMPLATES: CanonicalTemplate[] = [
   {
     name: "tournament_starting_first_match",
     category: "UTILITY",
-    language: "en",
+    language: "en_US",
     body:
       "🎾 ¡Empezamos {{1}}! Estás en Pool {{2}}.\n" +
       "🏁 Tu partido es el primero en {{3}}.\n" +
@@ -181,14 +181,14 @@ async function listTemplates(): Promise<ListedTemplate[]> {
   return ((data as { data?: ListedTemplate[] })?.data ?? []) as ListedTemplate[];
 }
 
-async function deleteTemplate(name: string, id?: string): Promise<void> {
+async function deleteTemplate(name: string, id: string): Promise<void> {
   const wabaId = envOrThrow("META_WHATSAPP_WABA_ID");
   const token = envOrThrow("META_WHATSAPP_ACCESS_TOKEN");
-  // Meta supports two delete shapes: by-name (deletes all language
-  // variants) or by-id (deletes a single variant). We start by-name to
-  // wipe stale duplicates; fall back to by-id if needed.
-  const params = new URLSearchParams({ name });
-  if (id) params.set("hsm_id", id);
+  // Always delete by template id (hsm_id) so we only touch the
+  // specific (name, language) variant. Deleting by name alone wipes
+  // every language variant and Meta locks the name from re-creation
+  // for 4 weeks (per-language).
+  const params = new URLSearchParams({ name, hsm_id: id });
   const url = `https://graph.facebook.com/${GRAPH_API_VERSION}/${wabaId}/message_templates?${params.toString()}`;
   const res = await fetch(url, {
     method: "DELETE",
@@ -197,7 +197,6 @@ async function deleteTemplate(name: string, id?: string): Promise<void> {
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
     const msg = (data as { error?: { message?: string } })?.error?.message ?? `HTTP ${res.status}`;
-    // 404 = template didn't exist, fine.
     if (res.status === 404) return;
     throw new Error(`deleteTemplate(${name}): ${msg}`);
   }
@@ -259,9 +258,16 @@ export async function syncCanonicalTemplates(): Promise<SyncTemplateResult[]> {
   for (const def of CANONICAL_TEMPLATES) {
     try {
       const matches = byName.get(def.name) ?? [];
-      const action: SyncTemplateResult["action"] = matches.length > 0 ? "replaced" : "created";
-      if (matches.length > 0) {
-        await deleteTemplate(def.name);
+      // Only touch the same-language variant — Meta locks deleted
+      // (name, language) pairs from re-creation for 4 weeks, so other
+      // languages must be left alone.
+      const sameLang = matches.find((m) => m.language === def.language);
+      let action: SyncTemplateResult["action"];
+      if (sameLang) {
+        await deleteTemplate(def.name, sameLang.id);
+        action = "replaced";
+      } else {
+        action = "created";
       }
       const { status } = await createTemplate(def);
       results.push({ name: def.name, action, status });
