@@ -150,6 +150,7 @@ export async function notifyCheckIn(args: {
       const result = await sendTemplate({
         to: phone,
         template: TEMPLATE_NAME,
+        language: "en",
         bodyParams: params,
       });
       return { phone, result };

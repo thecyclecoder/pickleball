@@ -230,8 +230,8 @@ export async function notifyTournamentStart(args: Args): Promise<TournamentStart
       const result = await sendTemplate({
         to: r.phone,
         template: r.isFirstMatch
-          ? "tournament_starting_first_match"
-          : "tournament_starting_pool",
+          ? "first_match_call"
+          : "pool_schedule_call",
         bodyParams: params,
       });
       if (result.ok) {

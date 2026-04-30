@@ -87,6 +87,7 @@ export async function POST(
     const result = await sendTemplate({
       to: phone,
       template: TEMPLATE_NAME,
+      language: "en",
       bodyParams: [c.title],
     });
     if (result.ok) delivered++;

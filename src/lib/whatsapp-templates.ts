@@ -67,7 +67,7 @@ export const CANONICAL_TEMPLATES: CanonicalTemplate[] = [
     ],
   },
   {
-    name: "tournament_starting_pool",
+    name: "pool_schedule_call",
     category: "UTILITY",
     language: "en_US",
     body:
@@ -93,7 +93,7 @@ export const CANONICAL_TEMPLATES: CanonicalTemplate[] = [
   {
     name: "clinic_check_in",
     category: "UTILITY",
-    language: "en_US",
+    language: "en",
     body:
       "✅ ¡Estás registrado para {{1}}!\n" +
       "\n" +
@@ -103,7 +103,7 @@ export const CANONICAL_TEMPLATES: CanonicalTemplate[] = [
   {
     name: "tournament_check_in",
     category: "UTILITY",
-    language: "en_US",
+    language: "en",
     body:
       "✅ ¡Estás registrado en {{1}}! Estás en Pool {{2}} con tu compañero {{3}}.\n" +
       "\n" +
@@ -124,7 +124,7 @@ export const CANONICAL_TEMPLATES: CanonicalTemplate[] = [
     ],
   },
   {
-    name: "tournament_starting_first_match",
+    name: "first_match_call",
     category: "UTILITY",
     language: "en_US",
     body:
@@ -179,27 +179,6 @@ async function listTemplates(): Promise<ListedTemplate[]> {
     throw new Error(`listTemplates: ${msg}`);
   }
   return ((data as { data?: ListedTemplate[] })?.data ?? []) as ListedTemplate[];
-}
-
-async function deleteTemplate(name: string, id: string): Promise<void> {
-  const wabaId = envOrThrow("META_WHATSAPP_WABA_ID");
-  const token = envOrThrow("META_WHATSAPP_ACCESS_TOKEN");
-  // Always delete by template id (hsm_id) so we only touch the
-  // specific (name, language) variant. Deleting by name alone wipes
-  // every language variant and Meta locks the name from re-creation
-  // for 4 weeks (per-language).
-  const params = new URLSearchParams({ name, hsm_id: id });
-  const url = `https://graph.facebook.com/${GRAPH_API_VERSION}/${wabaId}/message_templates?${params.toString()}`;
-  const res = await fetch(url, {
-    method: "DELETE",
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  if (!res.ok) {
-    const data = await res.json().catch(() => ({}));
-    const msg = (data as { error?: { message?: string } })?.error?.message ?? `HTTP ${res.status}`;
-    if (res.status === 404) return;
-    throw new Error(`deleteTemplate(${name}): ${msg}`);
-  }
 }
 
 async function createTemplate(t: CanonicalTemplate): Promise<{ id: string; status: string }> {
@@ -262,15 +241,15 @@ export async function syncCanonicalTemplates(): Promise<SyncTemplateResult[]> {
       // (name, language) pairs from re-creation for 4 weeks, so other
       // languages must be left alone.
       const sameLang = matches.find((m) => m.language === def.language);
-      let action: SyncTemplateResult["action"];
       if (sameLang) {
-        await deleteTemplate(def.name, sameLang.id);
-        action = "replaced";
-      } else {
-        action = "created";
+        // Skip — Meta locks deleted (name, language) pairs from
+        // re-creation for 4 weeks, so destructive sync is too risky.
+        // To update content, rename the template in CANONICAL.
+        results.push({ name: def.name, action: "skipped", status: sameLang.status });
+        continue;
       }
       const { status } = await createTemplate(def);
-      results.push({ name: def.name, action, status });
+      results.push({ name: def.name, action: "created", status });
     } catch (e) {
       results.push({
         name: def.name,
