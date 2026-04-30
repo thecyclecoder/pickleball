@@ -44,58 +44,51 @@ export default async function AdminClinicsPage() {
           </Link>
         </div>
       ) : (
-        <div className="overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900">
-          <table className="w-full text-sm">
-            <thead className="border-b border-zinc-800 bg-zinc-950 text-xs uppercase tracking-wider text-zinc-500">
-              <tr>
-                <th className="px-5 py-3 text-left">Title</th>
-                <th className="px-5 py-3 text-left">Date</th>
-                <th className="hidden px-5 py-3 text-left sm:table-cell">Location</th>
-                <th className="px-5 py-3 text-left">Signups</th>
-                <th className="px-5 py-3 text-left">Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-zinc-800">
-              {all.map((c) => {
-                const active = (c.registrations ?? []).filter(
-                  (r: { status: string }) => r.status !== "cancelled"
-                ).length;
-                return (
-                  <tr key={c.id} className="hover:bg-zinc-950/60">
-                    <td className="px-5 py-3">
-                      <Link
-                        href={`/admin/clinics/${c.id}`}
-                        className="font-medium text-white hover:text-emerald-400"
-                      >
-                        {c.title}
-                      </Link>
-                    </td>
-                    <td className="px-5 py-3 text-zinc-400">
+        <ul className="space-y-2">
+          {all.map((c) => {
+            const active = (c.registrations ?? []).filter(
+              (r: { status: string }) => r.status !== "cancelled"
+            ).length;
+            return (
+              <li key={c.id}>
+                <Link
+                  href={`/admin/clinics/${c.id}`}
+                  className="block rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-3 hover:border-zinc-700 sm:px-5 sm:py-4"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="min-w-0 flex-1 text-base font-semibold text-white">
+                      {c.title}
+                    </p>
+                    <span
+                      className={`shrink-0 rounded-md border px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider ${
+                        c.status === "published"
+                          ? "border-emerald-800 bg-emerald-950 text-emerald-400"
+                          : c.status === "cancelled"
+                            ? "border-red-900 bg-red-950 text-red-400"
+                            : "border-zinc-700 bg-zinc-800 text-zinc-400"
+                      }`}
+                    >
+                      {c.status}
+                    </span>
+                  </div>
+                  <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-zinc-400">
+                    <span>
                       {formatTournamentDate(c.start_date, c.end_date, c.timezone)}
-                    </td>
-                    <td className="hidden px-5 py-3 text-zinc-400 sm:table-cell">{c.location}</td>
-                    <td className="px-5 py-3 text-zinc-400">
-                      {active} {c.capacity ? `/ ${c.capacity}` : ""}
-                    </td>
-                    <td className="px-5 py-3">
-                      <span
-                        className={`rounded-md border px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider ${
-                          c.status === "published"
-                            ? "border-emerald-800 bg-emerald-950 text-emerald-400"
-                            : c.status === "cancelled"
-                              ? "border-red-900 bg-red-950 text-red-400"
-                              : "border-zinc-700 bg-zinc-800 text-zinc-400"
-                        }`}
-                      >
-                        {c.status}
-                      </span>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+                    </span>
+                    <span className="text-zinc-600">·</span>
+                    <span className="truncate">{c.location}</span>
+                    <span className="text-zinc-600">·</span>
+                    <span>
+                      {active}
+                      {c.capacity ? ` / ${c.capacity}` : ""} signup
+                      {active === 1 ? "" : "s"}
+                    </span>
+                  </div>
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
       )}
     </div>
   );
