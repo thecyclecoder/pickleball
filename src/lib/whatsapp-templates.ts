@@ -34,7 +34,7 @@ export type CanonicalTemplate = {
 
 export const CANONICAL_TEMPLATES: CanonicalTemplate[] = [
   {
-    name: "match_starting",
+    name: "match_up_next",
     category: "UTILITY",
     language: "en_US",
     body:
@@ -49,7 +49,7 @@ export const CANONICAL_TEMPLATES: CanonicalTemplate[] = [
     ],
   },
   {
-    name: "match_score_update",
+    name: "match_score_recorded",
     category: "UTILITY",
     language: "en_US",
     body:

@@ -51,7 +51,7 @@ export type ScoreNotifyOutcome = {
   sandbox: boolean;
 };
 
-const TEMPLATE_NAME = "match_score_update";
+const TEMPLATE_NAME = "match_score_recorded";
 
 function teamLabel(players: MinimalPlayer[]): string {
   if (players.length === 0) return "Team";

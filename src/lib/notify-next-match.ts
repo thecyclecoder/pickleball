@@ -33,7 +33,7 @@ import { calculatePoolStandings } from "./standings";
 import type { createAdminClient } from "./supabase/admin";
 import type { Game, Player } from "./types";
 
-const TEMPLATE_NAME = "match_starting";
+const TEMPLATE_NAME = "match_up_next";
 
 type MinimalPlayer = Pick<Player, "first_name" | "last_name" | "email" | "phone">;
 
