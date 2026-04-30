@@ -53,15 +53,23 @@ export default async function AdminClinicEditPage({
             {clinic.status}
           </p>
         </div>
-        {clinic.status === "published" && (
+        <div className="flex flex-wrap gap-2">
           <Link
-            href={publicUrl}
-            target="_blank"
-            className="rounded-lg border border-zinc-800 bg-zinc-900 px-4 py-2 text-sm text-zinc-300 hover:border-zinc-700 hover:text-white"
+            href={`/admin/clinics/${clinic.id}/check-in`}
+            className="rounded-lg border border-emerald-700 bg-emerald-950/40 px-4 py-2 text-sm text-emerald-200 hover:bg-emerald-950/60"
           >
-            View public page →
+            Check-in →
           </Link>
-        )}
+          {clinic.status === "published" && (
+            <Link
+              href={publicUrl}
+              target="_blank"
+              className="rounded-lg border border-zinc-800 bg-zinc-900 px-4 py-2 text-sm text-zinc-300 hover:border-zinc-700 hover:text-white"
+            >
+              View public page →
+            </Link>
+          )}
+        </div>
       </div>
 
       <ClinicRegistrationsPanel

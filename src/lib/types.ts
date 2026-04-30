@@ -243,6 +243,7 @@ export type Player = {
   is_captain: boolean;
   confirmed_at: string | null;
   paid_at: string | null;
+  checked_in_at: string | null;
   created_at: string;
 };
 
@@ -331,6 +332,7 @@ export type ClinicRegistration = {
   status: "registered" | "waitlisted" | "cancelled";
   paid_at: string | null;
   confirmed_at: string | null;
+  checked_in_at: string | null;
   registered_at: string;
   created_at: string;
 };

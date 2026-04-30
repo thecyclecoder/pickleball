@@ -91,6 +91,39 @@ export const CANONICAL_TEMPLATES: CanonicalTemplate[] = [
     ],
   },
   {
+    name: "clinic_check_in",
+    category: "UTILITY",
+    language: "en",
+    body:
+      "✅ ¡Estás registrado para {{1}}!\n" +
+      "\n" +
+      "✅ You're checked in for {{1}}!",
+    bodyExamples: ["Saturday Drills"],
+  },
+  {
+    name: "tournament_check_in",
+    category: "UTILITY",
+    language: "en",
+    body:
+      "✅ ¡Estás registrado en {{1}}! Estás en Pool {{2}} con tu compañero {{3}}.\n" +
+      "\n" +
+      "Tu primer partido: {{4}}\n" +
+      "\n" +
+      "¡Buena suerte!\n" +
+      "\n" +
+      "✅ You're checked in for {{1}}! You're in Pool {{2}} with your partner {{3}}.\n" +
+      "\n" +
+      "Your first match: {{4}}\n" +
+      "\n" +
+      "Good luck!",
+    bodyExamples: [
+      "Money Ball",
+      "A",
+      "Jack Munro",
+      "R1 · vs Eddie Declet & Pedro Maldonado · Court 1",
+    ],
+  },
+  {
     name: "tournament_starting_first_match",
     category: "UTILITY",
     language: "en",
